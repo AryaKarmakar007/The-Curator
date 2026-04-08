@@ -98,9 +98,9 @@
       <!-- Top Navigation -->
       <header class="topbar">
         <nav class="top-nav">
-          <a href="#" class="top-nav-item active">DISCOVER</a>
-          <a href="#" class="top-nav-item">MY LIBRARY</a>
-          <a href="#" class="top-nav-item">RADIO</a>
+          <a href="#" class="top-nav-item active" id="top-nav-discover">DISCOVER</a>
+          <a href="#" class="top-nav-item" id="top-nav-library">MY LIBRARY</a>
+          <a href="#" class="top-nav-item" id="top-nav-radio">RADIO</a>
         </nav>
 
         <div class="topbar-right">
@@ -128,8 +128,13 @@
               The Grammy-winning second studio album from the Australian producer, featuring a unique blend of future bass and experimental pop.
             </p>
             <div class="hero-actions">
-              <button class="btn-primary" id="hero-play">PLAY</button>
-              <button class="btn-outline">FOLLOW</button>
+              <button class="btn-primary" id="hero-play">
+                <span class="material-symbols-rounded fill" style="font-size:18px;margin-right:6px;">play_arrow</span>PLAY
+              </button>
+              <button class="btn-follow" id="btn-follow">
+                <span class="material-symbols-rounded" id="follow-icon" style="font-size:18px;margin-right:6px;">add</span>
+                <span id="follow-label">FOLLOW</span>
+              </button>
             </div>
           </div>
           <div class="hero-image">
@@ -318,6 +323,104 @@
               <div class="album-art"><img src="https://images.unsplash.com/photo-1520114002611-309d94943f55?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
               <p class="album-name">Jazz Classics</p>
               <p class="album-artist">Late Night Edition</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- My Library View -->
+      <div class="view-container" id="my-library-view" style="display: none;">
+        <div class="room-header">
+          <h1 class="hero-title">My Library</h1>
+          <p class="section-subtitle">Everything you've saved, in one place.</p>
+        </div>
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Saved Albums</h2>
+            <a href="#" class="view-all">VIEW ALL</a>
+          </div>
+          <div class="album-grid">
+            <div class="album-card">
+              <div class="album-art"><img src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
+              <p class="album-name">Slip Thru</p>
+              <p class="album-artist">Barren Gates</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
+              <p class="album-name">Citadel</p>
+              <p class="album-artist">Boom Kitty</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
+              <p class="album-name">Let's Go</p>
+              <p class="album-artist">Mo Falk, MADZI</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
+              <p class="album-name">Night Drive</p>
+              <p class="album-artist">Various Artists</p>
+            </div>
+          </div>
+        </section>
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Followed Artists</h2>
+          </div>
+          <div class="artist-grid">
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('https://images.unsplash.com/photo-1516280440502-12798e16fdcc?q=80&w=300&auto=format&fit=crop');background-size:cover;"></div>
+              <p class="artist-name">Lady Gaga</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=300&auto=format&fit=crop');background-size:cover;"></div>
+              <p class="artist-name">Beyoncé</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('https://images.unsplash.com/photo-1502691876148-a84978e59af8?q=80&w=300&auto=format&fit=crop');background-size:cover;"></div>
+              <p class="artist-name">Billie Eilish</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Radio View -->
+      <div class="view-container" id="radio-view" style="display: none;">
+        <div class="room-header">
+          <h1 class="hero-title">Radio</h1>
+          <p class="section-subtitle">Tune in to live and curated stations.</p>
+        </div>
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Trending Stations</h2>
+          </div>
+          <div class="radio-grid">
+            <div class="radio-card">
+              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
+              <div class="radio-info">
+                <p class="radio-name">Electronic Beats</p>
+                <p class="radio-meta"><span class="live-dot"></span> 12.4K listeners</p>
+              </div>
+            </div>
+            <div class="radio-card">
+              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
+              <div class="radio-info">
+                <p class="radio-name">Lofi Hip-Hop</p>
+                <p class="radio-meta"><span class="live-dot"></span> 8.9K listeners</p>
+              </div>
+            </div>
+            <div class="radio-card">
+              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
+              <div class="radio-info">
+                <p class="radio-name">Indie Vibes FM</p>
+                <p class="radio-meta"><span class="live-dot"></span> 5.2K listeners</p>
+              </div>
+            </div>
+            <div class="radio-card">
+              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1516280440502-12798e16fdcc?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
+              <div class="radio-info">
+                <p class="radio-name">Pop Hits 24/7</p>
+                <p class="radio-meta"><span class="live-dot"></span> 22.1K listeners</p>
+              </div>
             </div>
           </div>
         </section>

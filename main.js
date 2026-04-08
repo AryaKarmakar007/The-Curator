@@ -298,7 +298,7 @@ btnCreateRoom.addEventListener('click', (e) => {
   handleStartRoom();
 });
 
-const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view'];
+const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view', 'my-library-view', 'radio-view'];
 
 function switchView(viewId) {
   views.forEach(v => {
@@ -640,15 +640,51 @@ async function hostPlayNext() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initPlayer();
-  
-  // Prevent default on top nav items to avoid page jumps
+
+  // ── Top Nav Routing ──
+  const topNavMap = {
+    'top-nav-discover': 'home-view',
+    'top-nav-library':  'my-library-view',
+    'top-nav-radio':    'radio-view',
+  };
+
   document.querySelectorAll('.top-nav-item').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       document.querySelectorAll('.top-nav-item').forEach(el => el.classList.remove('active'));
       item.classList.add('active');
+
+      const targetView = topNavMap[item.id];
+      if (targetView) {
+        if (currentRoomId) leaveRoom(targetView);
+        else switchView(targetView);
+
+        // Clear sidebar active when switching to top-nav views
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      }
     });
   });
+
+  // ── Follow Button Toggle ──
+  const btnFollow = document.getElementById('btn-follow');
+  const followIcon = document.getElementById('follow-icon');
+  const followLabel = document.getElementById('follow-label');
+  let followed = false;
+
+  if (btnFollow) {
+    btnFollow.addEventListener('click', () => {
+      followed = !followed;
+      if (followed) {
+        btnFollow.classList.add('following');
+        followIcon.textContent = 'check';
+        followLabel.textContent = 'FOLLOWING';
+      } else {
+        btnFollow.classList.remove('following');
+        followIcon.textContent = 'add';
+        followLabel.textContent = 'FOLLOW';
+      }
+    });
+  }
 
   // Catch remaining mock links
   document.querySelectorAll('a[href="#"]').forEach(a => {
