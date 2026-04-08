@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Curator - Sonic Lens</title>
+  <link rel="stylesheet" href="./index.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- Hidden Audio Element -->
+    <audio id="audio-player"></audio>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">The Curator</div>
+
+      <nav class="nav-menu">
+        <a href="#" class="nav-item">
+          <span class="material-symbols-rounded">playlist_play</span>
+          <span>Playlist</span>
+        </a>
+        <a href="#" class="nav-item active">
+          <span class="material-symbols-rounded fill">library_music</span>
+          <span>My Playlist</span>
+        </a>
+        <a href="#" class="nav-item">
+          <span class="material-symbols-rounded">history</span>
+          <span>Last Listening</span>
+        </a>
+        <a href="#" class="nav-item">
+          <span class="material-symbols-rounded">auto_awesome</span>
+          <span>Recommended</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-room">
+          <span class="material-symbols-rounded">groups</span>
+          <span>Listening Room</span>
+        </a>
+
+        <div class="sidebar-section">
+          <p class="section-header">TRACKS</p>
+          <div class="track-list-mini">
+            <div class="mini-track-item">
+              <div class="mini-art"></div>
+              <div class="mini-info">
+                <p class="mini-title">Young And Menace</p>
+                <p class="mini-artist">Fall Out Boy</p>
+              </div>
+            </div>
+            <div class="mini-track-item">
+              <div class="mini-art"></div>
+              <div class="mini-info">
+                <p class="mini-title">Thunder</p>
+                <p class="mini-artist">Imagine Dragons</p>
+              </div>
+            </div>
+            <div class="mini-track-item">
+              <div class="mini-art"></div>
+              <div class="mini-info">
+                <p class="mini-title">Jumpsuit</p>
+                <p class="mini-artist">Twenty One Pilots</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <!-- Top Navigation -->
+      <header class="topbar">
+        <nav class="top-nav">
+          <a href="#" class="top-nav-item active">DISCOVER</a>
+          <a href="#" class="top-nav-item">MY LIBRARY</a>
+          <a href="#" class="top-nav-item">RADIO</a>
+        </nav>
+
+        <div class="topbar-right">
+          <div class="search-bar">
+            <span class="material-symbols-rounded">search</span>
+            <input type="text" placeholder="Search..." />
+          </div>
+          <button class="icon-btn" id="btn-create-room" style="display: none;"><span class="material-symbols-rounded">add_circle</span></button>
+          <button class="icon-btn"><span class="material-symbols-rounded">notifications</span></button>
+          <button class="icon-btn"><span class="material-symbols-rounded">settings</span></button>
+          <div class="user-profile">
+            <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile" />
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Area -->
+      <div class="view-container" id="home-view">
+        <!-- Hero Section -->
+        <section class="hero-card">
+          <div class="hero-content">
+            <span class="badge">NEW RELEASE</span>
+            <h1 class="hero-title">Flume: Skin</h1>
+            <p class="hero-desc">
+              The Grammy-winning second studio album from the Australian producer, featuring a unique blend of future bass and experimental pop.
+            </p>
+            <div class="hero-actions">
+              <button class="btn-primary" id="hero-play">PLAY</button>
+              <button class="btn-outline">FOLLOW</button>
+            </div>
+          </div>
+          <div class="hero-image">
+            <img id="featured-img" src="./src/assets/hero.png" alt="Featured" />
+          </div>
+        </section>
+
+        <!-- Popular Albums -->
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Popular Albums</h2>
+            <a href="#" class="view-all">VIEW ALL</a>
+          </div>
+          <p class="section-subtitle">Top charts from across the globe</p>
+          <div class="album-grid">
+            <div class="album-card">
+              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
+              <p class="album-name">Children of Bodom</p>
+              <p class="album-artist">Hate Crew Deathroll</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
+              <p class="album-name">Black Water</p>
+              <p class="album-artist">Tinashe</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
+              <p class="album-name">Hurtz 2B Human</p>
+              <p class="album-artist">Pink</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
+              <p class="album-name">After Hours</p>
+              <p class="album-artist">The Weeknd</p>
+            </div>
+            <div class="album-card">
+              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
+              <p class="album-name">Folklore</p>
+              <p class="album-artist">Taylor Swift</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Popular Artists -->
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Popular Artists</h2>
+            <a href="#" class="view-all">VIEW ALL</a>
+          </div>
+          <div class="artist-grid">
+            <div class="artist-card">
+              <div class="artist-img"></div>
+              <p class="artist-name">Lady Gaga</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img"></div>
+              <p class="artist-name">Bruno Mars</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img"></div>
+              <p class="artist-name">Beyoncé</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img"></div>
+              <p class="artist-name">Drake</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img"></div>
+              <p class="artist-name">Billie Eilish</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img"></div>
+              <p class="artist-name">Ed Sheeran</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Listening Room View -->
+      <div class="view-container" id="room-view" style="display: none;">
+        <div class="room-header">
+          <h1 class="hero-title" id="room-name-display">Listening Room</h1>
+          <p class="section-subtitle" id="room-status">Not connected</p>
+        </div>
+        
+        <div class="room-layout">
+          <!-- Queue & Voting Section -->
+          <div class="queue-section">
+            <div class="section-top">
+              <h2 class="section-title">Up Next (Vote)</h2>
+              <button class="btn-outline btn-small" id="btn-add-song">Add Song</button>
+            </div>
+            
+            <div class="queue-list" id="queue-list">
+              <!-- Queue items populated by JS -->
+            </div>
+          </div>
+          
+          <!-- Chat Section -->
+          <div class="chat-section">
+            <h2 class="section-title">Live Chat</h2>
+            <div class="chat-messages" id="chat-messages">
+              <!-- Messages populated by JS -->
+            </div>
+            <div class="chat-input-wrapper">
+              <input type="text" id="chat-input" placeholder="Type a message (syncs to current time)..." />
+              <button class="icon-btn fill" id="btn-send-chat"><span class="material-symbols-rounded">send</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Player Player Bar -->
+    <footer class="player-bar">
+      <div class="player-track">
+        <div class="track-art" id="current-track-art">
+          <div class="vinyl-overlay"></div>
+        </div>
+        <div class="track-info">
+          <p class="track-name" id="player-track-name">Told You So</p>
+          <p class="track-artist" id="player-track-artist">Paramore</p>
+        </div>
+        <button class="icon-btn favorite-btn"><span class="material-symbols-rounded">favorite</span></button>
+      </div>
+
+      <div class="player-controls">
+        <div class="control-buttons">
+          <button class="icon-btn-small" id="shuffle-btn"><span class="material-symbols-rounded">shuffle</span></button>
+          <button class="icon-btn-medium" id="prev-btn"><span class="material-symbols-rounded fill">skip_previous</span></button>
+          <button class="play-btn" id="play-pause-btn"><span class="material-symbols-rounded fill">play_arrow</span></button>
+          <button class="icon-btn-medium" id="next-btn"><span class="material-symbols-rounded fill">skip_next</span></button>
+          <button class="icon-btn-small" id="repeat-btn"><span class="material-symbols-rounded">repeat</span></button>
+        </div>
+        <div class="progress-container">
+          <span class="time" id="current-time">1:24</span>
+          <div class="progress-bar" id="progress-bar-container">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <span class="time" id="total-time">3:52</span>
+        </div>
+      </div>
+
+      <div class="player-options">
+        <button class="icon-btn"><span class="material-symbols-rounded">lyrics</span></button>
+        <button class="icon-btn"><span class="material-symbols-rounded">queue_music</span></button>
+        <div class="volume-control">
+          <span class="material-symbols-rounded">volume_up</span>
+          <div class="volume-slider">
+            <div class="volume-fill" style="width: 70%"></div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./main.js"></script>
+</body>
+
+</html>
