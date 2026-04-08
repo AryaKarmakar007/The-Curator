@@ -3,53 +3,34 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const playlist = [
-  {
-    id: 'track_1',
-    title: 'Slip Thru',
-    artist: 'Barren Gates, Taylor Ravenna',
-    src: './src/assets/music/Barren Gates, Taylor Ravenna - Slip Thru [NCS Release].mp3',
-    img: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop',
-    album: 'NCS Release',
-    time: '03:00'
-  },
-  {
-    id: 'track_2',
-    title: 'Citadel',
-    artist: 'Boom Kitty, Waterflame',
-    src: './src/assets/music/Boom Kitty, Waterflame - Citadel [NCS Release].mp3',
-    img: 'https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=500&auto=format&fit=crop',
-    album: 'NCS Release',
-    time: '03:32'
-  },
-  {
-    id: 'track_3',
-    title: 'colors',
-    artist: 'HXPETRAIN',
-    src: './src/assets/music/HXPETRAIN - colors [NCS Release].mp3',
-    img: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=500&auto=format&fit=crop',
-    album: 'NCS Release',
-    time: '02:40'
-  },
-  {
-    id: 'track_4',
-    title: 'Next Level',
-    artist: 'JOXION',
-    src: './src/assets/music/JOXION - Next Level [NCS Release].mp3',
-    img: 'https://images.unsplash.com/photo-1619983081563-430f63602796?q=80&w=500&auto=format&fit=crop',
-    album: 'NCS Release',
-    time: '03:15'
-  },
-  {
-    id: 'track_5',
-    title: 'Let\'s Go',
-    artist: 'Mo Falk, MADZI',
-    src: './src/assets/music/Mo Falk, MADZI - Let\'s Go [NCS Release].mp3',
-    img: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=500&auto=format&fit=crop',
-    album: 'NCS Release',
-    time: '02:50'
+let playlist = [];
+
+async function fetchPlaylist() {
+  const { data, error } = await supabaseClient.from('tracks').select('*').order('created_at', { ascending: false });
+  if (error) {
+    console.error('Error fetching playlist:', error);
+    return;
   }
-];
+  
+  if (data && data.length > 0) {
+    playlist = data.map(t => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist,
+      src: t.src_url,
+      img: t.img_url,
+      album: t.album || 'Unknown',
+      mood: t.mood || 'unspecified',
+      time: t.time || '0:00'
+    }));
+  } else {
+    playlist = []; // Empty state handled by UI
+  }
+
+  // Initialize UI now that data is loaded
+  initPlayer();
+  renderRecommendations('chill'); 
+}
 
 // User Info
 function getOrCreateUser() {
@@ -78,6 +59,19 @@ let isPlaying = false;
 let currentTrackIndex = 0;
 let volume = 0.7;
 
+// Liked Songs State (persisted in localStorage)
+let likedSongs = JSON.parse(localStorage.getItem('likedSongs') || '[]');
+
+// Play History State (persisted in localStorage)
+let playHistory = JSON.parse(localStorage.getItem('playHistory') || '[]');
+
+// Custom Queue State
+let userQueue = [];
+let removedStandardTracks = [];
+
+function savePlayHistory() {
+  localStorage.setItem('playHistory', JSON.stringify(playHistory));
+}
 // DOM Elements
 const audioPlayer = document.getElementById('audio-player');
 const navRoom = document.getElementById('nav-room');
@@ -109,6 +103,18 @@ const progressBarContainer = document.getElementById('progress-bar-container');
 
 const volumeSlider = document.querySelector('.volume-slider');
 const volumeFill = document.querySelector('.volume-fill');
+const favoriteBtn = document.getElementById('favorite-btn');
+const favoriteIcon = document.getElementById('favorite-icon');
+
+// Queue Elements
+const queueBtn = document.getElementById('queue-btn');
+const closeQueueBtn = document.getElementById('close-queue-btn');
+const queuePanel = document.getElementById('queue-panel');
+const queuePanelBackdrop = document.getElementById('queue-panel-backdrop');
+const queueNowArt = document.getElementById('queue-now-art');
+const queueNowTitle = document.getElementById('queue-now-title');
+const queueNowArtist = document.getElementById('queue-now-artist');
+const queuePanelList = document.getElementById('queue-panel-list');
 
 
 function generateUUID() {
@@ -131,16 +137,25 @@ function formatTime(seconds) {
 function initPlayer() {
   audioPlayer.volume = volume;
   updateVolumeUI();
-  loadTrack(currentTrackIndex);
+  if (playlist.length > 0) {
+    loadTrack(currentTrackIndex);
+  }
   setupEventListeners();
   populateGrids();
 }
 
 function loadTrack(index) {
   if (currentRoomId) return; // Managed by room logic
-  currentTrackIndex = index;
   const track = playlist[index];
   
+  if (!track) {
+    playerTrackName.textContent = 'Upload Music to Start';
+    playerTrackArtist.textContent = 'Global Database';
+    currentTrackArt.style.backgroundImage = 'none';
+    return;
+  }
+  
+  currentTrackIndex = index;
   audioPlayer.src = track.src;
   
   playerTrackName.textContent = track.title;
@@ -148,8 +163,22 @@ function loadTrack(index) {
   currentTrackArt.style.backgroundImage = `url(${track.img})`;
   currentTrackArt.style.backgroundSize = 'cover';
   
+  // Update Play History
+  if (!playHistory.some(t => t.id === track.id)) {
+      playHistory.push(track);
+      savePlayHistory();
+  }
+  
   if (isPlaying) {
     audioPlayer.play().catch(console.error);
+  }
+
+  // Update heart button state for new track
+  if (typeof updateFavoriteUI === 'function') updateFavoriteUI();
+  
+  // Update queue if panel is open
+  if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') {
+    renderQueue();
   }
 }
 
@@ -184,7 +213,23 @@ function handleNext() {
     hostPlayNext();
     return;
   }
-  currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+  
+  if (userQueue.length > 0) {
+    const nextTrack = userQueue.shift();
+    const idx = playlist.findIndex(p => p.id === nextTrack.id);
+    if(idx !== -1) currentTrackIndex = idx;
+  } else {
+    let loopCount = 0;
+    do {
+      currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+      loopCount++;
+    } while (
+      playlist[currentTrackIndex] && 
+      removedStandardTracks.includes(playlist[currentTrackIndex].id) && 
+      loopCount < playlist.length
+    );
+  }
+  
   loadTrack(currentTrackIndex);
   if (!isPlaying) togglePlay();
 }
@@ -230,7 +275,223 @@ function setupEventListeners() {
     audioPlayer.volume = volume;
     updateVolumeUI();
   });
+
+  // Queue Panel Toggle
+  const toggleQueuePanel = () => {
+    const isHidden = queuePanel.getAttribute('aria-hidden') === 'true';
+    queuePanel.setAttribute('aria-hidden', !isHidden);
+    queuePanelBackdrop.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) renderQueue();
+  };
+
+  if (queueBtn) queueBtn.addEventListener('click', toggleQueuePanel);
+  if (closeQueueBtn) closeQueueBtn.addEventListener('click', toggleQueuePanel);
+  if (queuePanelBackdrop) queuePanelBackdrop.addEventListener('click', toggleQueuePanel);
 }
+
+function renderQueue() {
+  if (!queuePanelList) return;
+  
+  try {
+    let safeIndex = typeof currentTrackIndex === 'number' && !isNaN(currentTrackIndex) ? currentTrackIndex : 0;
+    const currentTrack = playlist[safeIndex];
+    
+    if (currentTrack && queueNowTitle && queueNowArtist && queueNowArt) {
+        queueNowArt.style.backgroundImage = `url(${currentTrack.img})`;
+        queueNowTitle.textContent = currentTrack.title;
+        queueNowArtist.textContent = currentTrack.artist;
+    }
+  } catch (e) {
+    console.error("Error setting NOW PLAYING queue UI:", e);
+  }
+  
+  queuePanelList.innerHTML = '';
+  
+  if (currentRoomId && roomQueue.length > 0) {
+    // In a room, show room queue
+    roomQueue.forEach((track) => {
+        const item = document.createElement('div');
+        item.className = 'queue-list-item';
+        const playlistTrack = playlist.find(p => p.id === track.track_id) || { img: '', title: track.track_name, artist: track.track_artist };
+        item.innerHTML = `
+        <div class="queue-list-art" style="background-image:url('${playlistTrack.img}');background-size:cover;background-position:center;"></div>
+        <div class="queue-list-info">
+            <p class="queue-list-title">${playlistTrack.title}</p>
+            <p class="queue-list-artist">${playlistTrack.artist}</p>
+        </div>
+        `;
+        queuePanelList.appendChild(item);
+    });
+  } else {
+    // Standard local queue
+    
+    // 1. Show userQueue items first
+    userQueue.forEach((track, qIndex) => {
+      const item = document.createElement('div');
+      item.className = 'queue-list-item queue-removable';
+      item.style.borderLeft = '3px solid var(--primary)';
+      item.innerHTML = `
+        <div class="queue-list-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
+        <div class="queue-list-info">
+          <p class="queue-list-title">${track.title}</p>
+          <p class="queue-list-artist">${track.artist}</p>
+        </div>
+        <span class="queue-item-badge" style="font-size:10px; color:var(--primary); font-weight:700; text-transform:uppercase;">Queued</span>
+        <button type="button" class="queue-remove-btn" title="Remove from Queue" onclick="removeFromQueue(event, ${qIndex})">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      `;
+      queuePanelList.appendChild(item);
+    });
+
+    // 2. Show standard sequential playlist
+    let activeStandardTracks = 0;
+    for (let i = currentTrackIndex + 1; i < playlist.length; i++) {
+      const track = playlist[i];
+      if (removedStandardTracks.includes(track.id)) continue;
+      
+      activeStandardTracks++;
+      const item = document.createElement('div');
+      item.className = 'queue-list-item queue-removable';
+      item.innerHTML = `
+        <div class="queue-list-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
+        <div class="queue-list-info">
+          <p class="queue-list-title">${track.title}</p>
+          <p class="queue-list-artist">${track.artist}</p>
+        </div>
+        <button class="icon-btn-small queue-item-badge" onclick="loadTrack(${i}); if(!isPlaying) togglePlay();" title="Play">
+          <span class="material-symbols-rounded fill" style="font-size:18px;">play_arrow</span>
+        </button>
+        <button type="button" class="queue-remove-btn" title="Remove from Queue" onclick="removeStandardTrack(event, '${track.id}')">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      `;
+      queuePanelList.appendChild(item);
+    }
+    if (activeStandardTracks === 0 && userQueue.length === 0) {
+      queuePanelList.innerHTML = `<div class="empty-queue"><p style="color:var(--on-surface-muted);font-size:12px;text-align:center;padding:20px;">No more tracks in queue.</p></div>`;
+    }
+  }
+}
+
+// Global addToQueue function
+window.addToQueueId = function(id, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const track = playlist.find(t => t.id === id);
+    if(track) {
+       userQueue.push(track);
+       if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') {
+           renderQueue();
+       }
+    }
+};
+
+window.removeFromQueue = function(event, index) {
+  if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+  }
+  userQueue.splice(index, 1);
+  if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') {
+      renderQueue();
+  }
+};
+
+window.removeStandardTrack = function(event, trackId) {
+  if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+  }
+  removedStandardTracks.push(trackId);
+  if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') {
+      renderQueue();
+  }
+};
+
+// -------------------------------------------------------------
+// Auto Recommendations Logic
+// -------------------------------------------------------------
+let currentMood = 'all';
+
+document.querySelectorAll('.mood-pill').forEach(pill => {
+   pill.addEventListener('click', (e) => {
+      document.querySelectorAll('.mood-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      currentMood = pill.dataset.mood;
+      renderRecommendations();
+   });
+});
+
+function getRecommendations(mood) {
+    let pool = playlist.filter(t => !playHistory.find(h => h.id === t.id));
+    if (pool.length === 0) pool = playlist; // fallback if user has listened to everything
+    
+    // Deterministic pseudo-random generation to simulate mood matching for given mock playlist
+    if (mood !== 'all') {
+       pool = pool.filter(t => {
+           const score = (t.title.charCodeAt(0) + t.artist.charCodeAt(0)) % 6;
+           const moodMap = { 'chill': 0, 'upbeat': 1, 'focus': 2, 'sad': 3, 'workout': 4, 'jolly': 5 };
+           return score === moodMap[mood];
+       });
+       if(pool.length === 0) pool = playlist.slice(0, 5); // fallback if empty
+    }
+    
+    // Sort pool by placing tracks with familiar artists slightly higher
+    const historyArtists = playHistory.map(t => t.artist);
+    pool.sort((a,b) => {
+       const aScore = historyArtists.includes(a.artist) ? 1 : 0;
+       const bScore = historyArtists.includes(b.artist) ? 1 : 0;
+       return bScore - aScore;
+    });
+
+    return pool.slice(0, 10);
+}
+
+function renderRecommendations() {
+    const list = document.getElementById('recommended-track-list');
+    if(!list) return;
+    list.innerHTML = '';
+    
+    const recs = getRecommendations(currentMood);
+    
+    if(recs.length === 0) {
+       list.innerHTML = '<p style="padding:40px;text-align:center;color:var(--on-surface-muted);">No recommendations found.</p>';
+       return;
+    }
+
+    recs.forEach((track, i) => {
+        const row = document.createElement('div');
+        row.className = 'liked-track-row';
+        row.innerHTML = `
+          <span class="liked-track-num">${(i + 1).toString().padStart(2, '0')}</span>
+          <div class="liked-track-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
+          <div class="liked-track-info">
+            <span class="liked-track-title">${track.title}</span>
+            <span class="liked-track-artist">${track.artist}</span>
+          </div>
+          <span class="liked-track-album">${track.album || 'Unknown'}</span>
+          <span class="liked-track-duration">${track.time || '—'}</span>
+          <button type="button" class="queue-add-btn" title="Add to Queue" onclick="addToQueueId('${track.id}', event)">
+            <span class="material-symbols-rounded">playlist_add</span>
+          </button>
+        `;
+        // double click to play right away
+        row.addEventListener('dblclick', () => {
+          const idx = playlist.findIndex(p => p.id === track.id);
+          if (idx !== -1) {
+            leaveRoom('recommended-view');
+            currentTrackIndex = idx;
+            loadTrack(idx);
+            if (!isPlaying) togglePlay();
+          }
+        });
+        list.appendChild(row);
+    });
+}
+window.renderRecommendations = renderRecommendations;
 
 function updateVolumeUI() {
   volumeFill.style.width = `${volume * 100}%`;
@@ -298,12 +559,12 @@ btnCreateRoom.addEventListener('click', (e) => {
   handleStartRoom();
 });
 
-const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view', 'my-library-view', 'radio-view'];
+const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view', 'my-library-view', 'radio-view', 'liked-songs-view', 'upload-view'];
 
 function switchView(viewId) {
   views.forEach(v => {
     const el = document.getElementById(v);
-    if (el) el.style.display = (v === viewId) ? (v === 'room-view' ? 'flex' : 'block') : 'none';
+    if (el) el.style.display = (v === viewId) ? ((v === 'room-view' || v === 'upload-view') ? 'flex' : 'block') : 'none';
   });
   
   if (viewId === 'room-view') {
@@ -335,22 +596,28 @@ function leaveRoom(targetView = 'home-view') {
   }
 }
 
-// Side navigation home
+// Side navigation
 document.querySelectorAll('.nav-menu .nav-item').forEach(item => {
   if (item.id === 'nav-room') return; // handled separately
-  
+
   item.addEventListener('click', (e) => {
     e.preventDefault();
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     item.classList.add('active');
-    
+
+    // Clear top-nav active so they don't conflict
+    document.querySelectorAll('.top-nav-item').forEach(el => el.classList.remove('active'));
+
     // routing logic
     let targetView = 'home-view';
-    if (item.id === 'nav-playlist') targetView = 'playlist-view';
+    if (item.id === 'nav-playlist')       targetView = 'playlist-view';
     if (item.id === 'nav-last-listening') targetView = 'last-listening-view';
-    if (item.id === 'nav-recommended') targetView = 'recommended-view';
-    
-    // leave room and switch to target view
+    if (item.id === 'nav-recommended')    targetView = 'recommended-view';
+    if (item.id === 'nav-liked')          targetView = 'liked-songs-view';
+    if (item.id === 'nav-upload')         targetView = 'upload-view';
+
+    if (targetView === 'liked-songs-view') renderLikedSongs();
+
     if (currentRoomId) {
       leaveRoom(targetView);
     } else {
@@ -358,6 +625,125 @@ document.querySelectorAll('.nav-menu .nav-item').forEach(item => {
     }
   });
 });
+
+// -------------------------------------------------------------
+// Liked Songs
+// -------------------------------------------------------------
+
+function saveLikedSongs() {
+  localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+}
+
+function getCurrentTrack() {
+  if (currentRoomId && localCurrentTrack) return localCurrentTrack;
+  return playlist[currentTrackIndex] || null;
+}
+
+function isTrackLiked(trackId) {
+  return likedSongs.some(t => t.id === trackId);
+}
+
+function updateFavoriteUI() {
+  const track = getCurrentTrack();
+  if (!track) return;
+  const liked = isTrackLiked(track.id);
+  favoriteIcon.textContent = 'favorite';
+  favoriteIcon.style.color = liked ? '#ff4d6d' : '';
+  favoriteBtn.classList.toggle('liked', liked);
+}
+
+function toggleLike() {
+  const track = getCurrentTrack();
+  if (!track) return;
+
+  if (isTrackLiked(track.id)) {
+    likedSongs = likedSongs.filter(t => t.id !== track.id);
+  } else {
+    likedSongs.push({ ...track });
+  }
+  saveLikedSongs();
+  updateFavoriteUI();
+
+  // If liked songs view is open, re-render
+  const likedView = document.getElementById('liked-songs-view');
+  if (likedView && likedView.style.display !== 'none') {
+    renderLikedSongs();
+  }
+}
+
+function renderLikedSongs() {
+  const list = document.getElementById('liked-track-list');
+  const empty = document.getElementById('liked-empty-state');
+  const countEl = document.getElementById('liked-count');
+
+  countEl.textContent = likedSongs.length === 1 ? '1 song' : `${likedSongs.length} songs`;
+
+  if (likedSongs.length === 0) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+
+  empty.style.display = 'none';
+  list.style.display = 'flex';
+  list.innerHTML = '';
+
+  likedSongs.forEach((track, i) => {
+    const row = document.createElement('div');
+    row.className = 'liked-track-row';
+    row.innerHTML = `
+      <span class="liked-track-num">${(i + 1).toString().padStart(2, '0')}</span>
+      <div class="liked-track-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
+      <div class="liked-track-info">
+        <span class="liked-track-title">${track.title}</span>
+        <span class="liked-track-artist">${track.artist}</span>
+      </div>
+      <span class="liked-track-album">${track.album || 'Unknown'}</span>
+      <span class="liked-track-duration">${track.time || '—'}</span>
+      <button class="liked-track-remove" title="Unlike" onclick="unlikeTrack('${track.id}')">
+        <span class="material-symbols-rounded fill" style="color:#ff4d6d;font-size:18px;">favorite</span>
+      </button>
+    `;
+    row.addEventListener('dblclick', () => {
+      const idx = playlist.findIndex(p => p.id === track.id);
+      if (idx !== -1) {
+        leaveRoom();
+        currentTrackIndex = idx;
+        loadTrack(idx);
+        if (!isPlaying) togglePlay();
+      }
+    });
+    list.appendChild(row);
+  });
+}
+
+window.unlikeTrack = function(trackId) {
+  likedSongs = likedSongs.filter(t => t.id !== trackId);
+  saveLikedSongs();
+  updateFavoriteUI();
+  renderLikedSongs();
+};
+
+// Wire favorite button
+if (favoriteBtn) {
+  favoriteBtn.addEventListener('click', toggleLike);
+}
+
+// Wire Play All liked
+document.getElementById('btn-play-liked')?.addEventListener('click', () => {
+  if (likedSongs.length === 0) return;
+  const firstTrack = likedSongs[0];
+  const idx = playlist.findIndex(p => p.id === firstTrack.id);
+  if (idx !== -1) {
+    switchView('home-view');
+    leaveRoom();
+    currentTrackIndex = idx;
+    loadTrack(idx);
+    if (!isPlaying) togglePlay();
+  }
+});
+
 
 // -------------------------------------------------------------
 // Supabase Room Logic
@@ -442,7 +828,8 @@ async function fetchQueue() {
     
   if (!error && data) {
     roomQueue = data;
-    renderQueue();
+    renderRoomQueue();
+    if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') renderQueue();
   }
 }
 
@@ -458,7 +845,7 @@ async function fetchMessages() {
   }
 }
 
-function renderQueue() {
+function renderRoomQueue() {
   queueList.innerHTML = '';
   roomQueue.forEach(item => {
     const el = document.createElement('div');
@@ -639,7 +1026,8 @@ async function hostPlayNext() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  initPlayer();
+  // Start the dynamically loading track timeline
+  fetchPlaylist();
 
   // ── Top Nav Routing ──
   const topNavMap = {
@@ -692,4 +1080,80 @@ document.addEventListener('DOMContentLoaded', () => {
       a.addEventListener('click', e => e.preventDefault());
     }
   });
+
+  // ── Hook up Upload Logic ──
+  const uploadForm = document.getElementById('upload-form');
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const audioFile = document.getElementById('upload-audio').files[0];
+      const imageFile = document.getElementById('upload-image').files[0];
+      const title = document.getElementById('upload-title').value;
+      const artist = document.getElementById('upload-artist').value;
+      const album = document.getElementById('upload-album').value || '';
+      const mood = document.getElementById('upload-mood').value;
+      
+      if (!audioFile || !imageFile || !title || !artist) return alert('Please fill required fields.');
+
+      const submitBtn = document.getElementById('upload-submit-btn');
+      const progressContainer = document.getElementById('upload-progress-container');
+      const progressBar = document.getElementById('upload-progress-bar');
+      const statusText = document.getElementById('upload-status');
+      
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      progressContainer.style.display = 'block';
+      progressBar.style.width = '10%';
+      statusText.textContent = 'Uploading Cover Art...';
+
+      try {
+        const imgExt = imageFile.name.split('.').pop();
+        const imgName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${imgExt}`;
+        const { error: imgErr, data: imgData } = await supabaseClient.storage.from('covers').upload(imgName, imageFile);
+        if (imgErr) throw imgErr;
+        const imgUrl = supabaseClient.storage.from('covers').getPublicUrl(imgName).data.publicUrl;
+
+        progressBar.style.width = '40%';
+        statusText.textContent = 'Uploading Audio Track...';
+
+        const audioExt = audioFile.name.split('.').pop();
+        const audioName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${audioExt}`;
+        const { error: audioErr, data: audioData } = await supabaseClient.storage.from('music').upload(audioName, audioFile);
+        if (audioErr) throw audioErr;
+        const audioUrl = supabaseClient.storage.from('music').getPublicUrl(audioName).data.publicUrl;
+
+        // Try to estimate duration from file if possible, or just default to 3:00 for MVP
+        let parsedDuration = '03:00';
+        progressBar.style.width = '80%';
+        statusText.textContent = 'Saving Metadata...';
+
+        const { error: dbErr } = await supabaseClient.from('tracks').insert([{
+           title, artist, album, mood, time: parsedDuration, src_url: audioUrl, img_url: imgUrl 
+        }]);
+        if (dbErr) throw dbErr;
+
+        progressBar.style.width = '100%';
+        statusText.textContent = 'Success!';
+        
+        // Refresh playlist
+        await fetchPlaylist();
+        
+        setTimeout(() => {
+          uploadForm.reset();
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+          progressContainer.style.display = 'none';
+          document.getElementById('nav-recommended').click(); // Switch to recommended to see the new track natively
+        }, 1500);
+
+      } catch (err) {
+        console.error('Upload error', err);
+        statusText.textContent = 'Upload failed: ' + err.message;
+        statusText.style.color = '#ff4d6d';
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+      }
+    });
+  }
 });
