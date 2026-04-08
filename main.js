@@ -21,7 +21,9 @@ async function fetchPlaylist() {
       img: t.img_url,
       album: t.album || 'Unknown',
       mood: t.mood || 'unspecified',
-      time: t.time || '0:00'
+      time: t.time || '0:00',
+      play_count: t.play_count || 0,
+      created_at: new Date(t.created_at)
     }));
   } else {
     playlist = []; // Empty state handled by UI
@@ -30,6 +32,7 @@ async function fetchPlaylist() {
   // Initialize UI now that data is loaded
   initPlayer();
   renderRecommendations('chill'); 
+  initSidebarRecs();
 }
 
 // User Info
@@ -116,6 +119,14 @@ const queueNowTitle = document.getElementById('queue-now-title');
 const queueNowArtist = document.getElementById('queue-now-artist');
 const queuePanelList = document.getElementById('queue-panel-list');
 
+// New Artist View Elements
+const artistView = document.getElementById('artist-view');
+const artistNameDisplay = document.getElementById('artist-name-display');
+const artistStatsDisplay = document.getElementById('artist-stats-display');
+const artistTracksList = document.getElementById('artist-tracks-list');
+const artistNoSongs = document.getElementById('artist-no-songs');
+const btnPlayArtistAll = document.getElementById('btn-play-artist-all');
+
 
 function generateUUID() {
   return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -140,7 +151,6 @@ function initPlayer() {
   if (playlist.length > 0) {
     loadTrack(currentTrackIndex);
   }
-  setupEventListeners();
   populateGrids();
 }
 
@@ -169,6 +179,9 @@ function loadTrack(index) {
       savePlayHistory();
   }
   
+  // Update Smart Recs in Sidebar
+  renderSmartRecs();
+
   if (isPlaying) {
     audioPlayer.play().catch(console.error);
   }
@@ -241,6 +254,14 @@ function handlePrev() {
   if (!isPlaying) togglePlay();
 }
 
+// Queue Panel Toggle
+function toggleQueuePanel() {
+  const isHidden = queuePanel.getAttribute('aria-hidden') === 'true';
+  queuePanel.setAttribute('aria-hidden', !isHidden);
+  queuePanelBackdrop.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) renderQueue();
+}
+
 function setupEventListeners() {
   playPauseBtn.addEventListener('click', togglePlay);
   nextBtn.addEventListener('click', handleNext);
@@ -275,14 +296,6 @@ function setupEventListeners() {
     audioPlayer.volume = volume;
     updateVolumeUI();
   });
-
-  // Queue Panel Toggle
-  const toggleQueuePanel = () => {
-    const isHidden = queuePanel.getAttribute('aria-hidden') === 'true';
-    queuePanel.setAttribute('aria-hidden', !isHidden);
-    queuePanelBackdrop.style.display = isHidden ? 'block' : 'none';
-    if (isHidden) renderQueue();
-  };
 
   if (queueBtn) queueBtn.addEventListener('click', toggleQueuePanel);
   if (closeQueueBtn) closeQueueBtn.addEventListener('click', toggleQueuePanel);
@@ -383,7 +396,13 @@ window.addToQueueId = function(id, event) {
     const track = playlist.find(t => t.id === id);
     if(track) {
        userQueue.push(track);
-       if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') {
+       
+       // UI Feedback: Open the queue panel if it's not already open
+       if (!queuePanel || queuePanel.getAttribute('aria-hidden') === 'true') {
+           if (typeof toggleQueuePanel === 'function') {
+               toggleQueuePanel();
+           }
+       } else {
            renderQueue();
        }
     }
@@ -411,43 +430,45 @@ window.removeStandardTrack = function(event, trackId) {
   }
 };
 
-// -------------------------------------------------------------
-// Auto Recommendations Logic
-// -------------------------------------------------------------
-let currentMood = 'all';
-
-document.querySelectorAll('.mood-pill').forEach(pill => {
-   pill.addEventListener('click', (e) => {
-      document.querySelectorAll('.mood-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      currentMood = pill.dataset.mood;
-      renderRecommendations();
-   });
-});
-
-function getRecommendations(mood) {
-    let pool = playlist.filter(t => !playHistory.find(h => h.id === t.id));
-    if (pool.length === 0) pool = playlist; // fallback if user has listened to everything
+// Global Delete Function (Permanent removal)
+window.deleteTrack = async function(id, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
+  const { error } = await supabaseClient.from('tracks').delete().eq('id', id);
+  if (!error) {
+    // Optimistic UI Update: Remove from local array immediately
+    playlist = playlist.filter(t => t.id !== id);
     
-    // Deterministic pseudo-random generation to simulate mood matching for given mock playlist
-    if (mood !== 'all') {
-       pool = pool.filter(t => {
-           const score = (t.title.charCodeAt(0) + t.artist.charCodeAt(0)) % 6;
-           const moodMap = { 'chill': 0, 'upbeat': 1, 'focus': 2, 'sad': 3, 'workout': 4, 'jolly': 5 };
-           return score === moodMap[mood];
-       });
-       if(pool.length === 0) pool = playlist.slice(0, 5); // fallback if empty
+    // Refresh UI based on current view
+    if (document.getElementById('home-view').style.display !== 'none' || 
+        document.getElementById('recommended-view').style.display !== 'none') {
+        renderRecommendations();
+        initHeroCarousel();
+    } else if (document.getElementById('artist-view').style.display !== 'none') {
+        const artistName = document.getElementById('artist-name-display').textContent;
+        showArtistView(artistName);
     }
+  } else {
+    console.error('Error deleting track:', error);
+    alert('Failed to remove track.');
+  }
+};
+
+function getRecommendations() {
+    let pool = [...playlist];
     
-    // Sort pool by placing tracks with familiar artists slightly higher
-    const historyArtists = playHistory.map(t => t.artist);
+    // Sort by play count first (most popular), then by newest added
     pool.sort((a,b) => {
-       const aScore = historyArtists.includes(a.artist) ? 1 : 0;
-       const bScore = historyArtists.includes(b.artist) ? 1 : 0;
-       return bScore - aScore;
+       if (b.play_count !== a.play_count) {
+           return b.play_count - a.play_count;
+       }
+       return b.created_at - a.created_at;
     });
 
-    return pool.slice(0, 10);
+    return pool.slice(0, 15);
 }
 
 function renderRecommendations() {
@@ -455,27 +476,34 @@ function renderRecommendations() {
     if(!list) return;
     list.innerHTML = '';
     
-    const recs = getRecommendations(currentMood);
+    const recs = getRecommendations();
     
     if(recs.length === 0) {
-       list.innerHTML = '<p style="padding:40px;text-align:center;color:var(--on-surface-muted);">No recommendations found.</p>';
+       list.innerHTML = '<p style="padding:40px;text-align:center;color:var(--on-surface-muted);">No tracks available.</p>';
        return;
     }
 
     recs.forEach((track, i) => {
+        const isNew = (new Date() - track.created_at) < (7 * 24 * 60 * 60 * 1000); // within 7 days
+        const newBadge = isNew ? '<span class="badge-new">NEWLY ADDED</span>' : '';
+        const playCountLabel = `<span style="font-size:10px; color:var(--on-surface-muted); margin-left:8px;">${track.play_count} plays</span>`;
+        
         const row = document.createElement('div');
         row.className = 'liked-track-row';
         row.innerHTML = `
           <span class="liked-track-num">${(i + 1).toString().padStart(2, '0')}</span>
           <div class="liked-track-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
           <div class="liked-track-info">
-            <span class="liked-track-title">${track.title}</span>
-            <span class="liked-track-artist">${track.artist}</span>
+            <span class="liked-track-title">${track.title} ${newBadge}</span>
+            <span class="liked-track-artist">${track.artist} ${playCountLabel}</span>
           </div>
           <span class="liked-track-album">${track.album || 'Unknown'}</span>
           <span class="liked-track-duration">${track.time || '—'}</span>
           <button type="button" class="queue-add-btn" title="Add to Queue" onclick="addToQueueId('${track.id}', event)">
             <span class="material-symbols-rounded">playlist_add</span>
+          </button>
+          <button type="button" class="delete-track-btn" title="Permanently Remove" onclick="deleteTrack('${track.id}', event)">
+            <span class="material-symbols-rounded" style="color:var(--primary); font-size:20px;">delete_forever</span>
           </button>
         `;
         // double click to play right away
@@ -493,41 +521,262 @@ function renderRecommendations() {
 }
 window.renderRecommendations = renderRecommendations;
 
+// -------------------------------------------------------------
+// Smart Recommendations Engine
+// -------------------------------------------------------------
+
+const MOOD_ICONS = { chill:'❄️', upbeat:'⚡', focus:'🎯', sad:'🌧️', workout:'💪', jolly:'🎉' };
+const MOOD_LABELS = { chill:'Chill vibes today', upbeat:'You\'re feeling energetic!', focus:'In the zone — deep focus', sad:'Melancholy mood', workout:'Ready to grind!', jolly:'Party mode activated!' };
+
+function inferMoodFromHistory() {
+  if (playHistory.length === 0) return null;
+  // Score moods from the last 20 plays, weight recency
+  const recent = playHistory.slice(-20);
+  const scores = {};
+  recent.forEach((t, i) => {
+    if (!t.mood || t.mood === 'unspecified') return;
+    const weight = (i + 1) / recent.length; // newer = higher weight
+    scores[t.mood] = (scores[t.mood] || 0) + weight;
+  });
+  if (Object.keys(scores).length === 0) return null;
+  return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+// Toggle Smart Recs in Sidebar (No toggle needed anymore as it is persistent)
+// But we still need to initialize it and update it
+function initSidebarRecs() {
+  renderSmartRecs();
+}
+
+function renderSmartRecs() {
+  const moodEl = document.getElementById('sidebar-mood-text');
+  const listEl = document.getElementById('sidebar-smart-recs-list');
+  if (!listEl) return;
+
+  const inferredMood = inferMoodFromHistory();
+
+  if (!inferredMood) {
+    if(moodEl) moodEl.textContent = 'Play more to get picks';
+    listEl.innerHTML = '<p style="padding:12px;font-size:11px;color:var(--on-surface-muted);">Your history is empty.</p>';
+    return;
+  }
+
+  if(moodEl) moodEl.textContent = MOOD_LABELS[inferredMood] || inferredMood;
+
+  // Pick tracks matching the mood that are NOT already in queue
+  const queuedIds = new Set(userQueue.map(t => t.id));
+  let candidates = playlist.filter(t => t.mood === inferredMood && !queuedIds.has(t.id));
+  if (candidates.length === 0) candidates = playlist.filter(t => !queuedIds.has(t.id));
+  
+  // Sort by play_count desc, take top 4 for sidebar
+  candidates.sort((a, b) => b.play_count - a.play_count);
+  const picks = candidates.slice(0, 4);
+
+  listEl.innerHTML = '';
+  if (picks.length === 0) {
+    listEl.innerHTML = '<p style="padding:12px;font-size:11px;color:var(--on-surface-muted);">All picks in queue!</p>';
+    return;
+  }
+
+  picks.forEach(track => {
+    const item = document.createElement('div');
+    item.className = 'smart-sidebar-item';
+    item.innerHTML = `
+      <div class="smart-sidebar-art" style="background-image:url('${track.img}')"></div>
+      <div class="smart-sidebar-info">
+        <p class="smart-sidebar-title">${track.title}</p>
+        <p class="smart-sidebar-artist">${track.artist}</p>
+      </div>
+      <span class="material-symbols-rounded smart-sidebar-add">add_circle</span>
+    `;
+    item.addEventListener('click', (e) => {
+      addToQueueId(track.id, e);
+      item.querySelector('.smart-sidebar-add').textContent = 'check_circle';
+      item.querySelector('.smart-sidebar-add').style.color = 'var(--primary)';
+    });
+    listEl.appendChild(item);
+  });
+}
+
 function updateVolumeUI() {
   volumeFill.style.width = `${volume * 100}%`;
 }
 
 function populateGrids() {
-  // Populate Popular Albums
-  const albumGrid = document.querySelector('.album-grid');
-  albumGrid.innerHTML = '';
-  
-  playlist.forEach((track, index) => {
-    const card = document.createElement('div');
-    card.className = 'album-card';
-    card.innerHTML = `
-      <div class="album-art"><img src="${track.img}" alt="${track.title}"></div>
-      <p class="album-name">${track.title}</p>
-      <p class="album-artist">${track.artist}</p>
-    `;
-    card.addEventListener('click', () => {
-      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      document.querySelector('.nav-item').classList.add('active'); // active home
-      leaveRoom();
-      currentTrackIndex = index;
-      loadTrack(index);
-      if (!isPlaying) togglePlay();
+  const albumGrid = document.getElementById('album-grid');
+  if (albumGrid) {
+    albumGrid.innerHTML = '';
+    playlist.forEach((track, i) => {
+      const card = document.createElement('div');
+      card.className = 'album-card';
+      card.innerHTML = `
+        <div class="album-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;">
+          <div class="play-overlay"><span class="material-symbols-rounded">play_arrow</span></div>
+        </div>
+        <p class="album-name">${track.title}</p>
+        <p class="artist-name">${track.artist}</p>
+      `;
+      card.addEventListener('click', () => {
+        currentTrackIndex = i;
+        loadTrack(i);
+        if (!isPlaying) togglePlay();
+      });
+      albumGrid.appendChild(card);
     });
-    albumGrid.appendChild(card);
+  }
+
+  // ── Hero Carousel ──
+  initHeroCarousel();
+}
+
+// ── Artist Detail View Logic ──
+function showArtistView(artistName) {
+  // Switch view
+  document.querySelectorAll('.view-container').forEach(v => v.style.display = 'none');
+  artistView.style.display = 'block';
+  window.scrollTo(0,0);
+  
+  artistNameDisplay.textContent = artistName;
+  
+  // Filter tracks
+  const tracks = playlist.filter(t => t.artist.toLowerCase().trim() === artistName.toLowerCase().trim());
+  artistStatsDisplay.textContent = `${tracks.length} Songs • ${Math.floor(Math.random() * 500) + 100}k Monthly Listeners`;
+  
+  artistTracksList.innerHTML = '';
+  if (tracks.length === 0) {
+    artistNoSongs.style.display = 'block';
+    artistTracksList.style.display = 'none';
+    btnPlayArtistAll.style.display = 'none';
+  } else {
+    artistNoSongs.style.display = 'none';
+    artistTracksList.style.display = 'flex';
+    btnPlayArtistAll.style.display = 'flex';
+    
+    tracks.forEach((track, i) => {
+       const row = document.createElement('div');
+       row.className = 'liked-track-row';
+       row.innerHTML = `
+         <span class="liked-track-num">${(i + 1).toString().padStart(2, '0')}</span>
+         <div class="liked-track-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
+         <div class="liked-track-info">
+           <span class="liked-track-title">${track.title}</span>
+           <span class="liked-track-artist">${track.artist}</span>
+         </div>
+         <span class="liked-track-album">${track.album || 'Unknown'}</span>
+         <span class="liked-track-duration">${track.time || '—'}</span>
+         <button type="button" class="queue-add-btn" title="Add to Queue" onclick="addToQueueId('${track.id}', event)">
+           <span class="material-symbols-rounded">playlist_add</span>
+         </button>
+         <button type="button" class="delete-track-btn" title="Permanently Remove" onclick="deleteTrack('${track.id}', event)">
+           <span class="material-symbols-rounded" style="color:var(--primary); font-size:20px;">delete_forever</span>
+         </button>
+       `;
+       row.addEventListener('dblclick', () => {
+         const idx = playlist.findIndex(p => p.id === track.id);
+         if(idx !== -1) {
+           currentTrackIndex = idx;
+           loadTrack(idx);
+           if(!isPlaying) togglePlay();
+         }
+       });
+       artistTracksList.appendChild(row);
+    });
+
+    btnPlayArtistAll.onclick = () => {
+       const firstTrack = tracks[0];
+       const idx = playlist.findIndex(p => p.id === firstTrack.id);
+       if(idx !== -1) {
+          currentTrackIndex = idx;
+          loadTrack(idx);
+          if(!isPlaying) togglePlay();
+          userQueue = [...tracks.slice(1)];
+          renderQueue();
+       }
+    };
+  }
+}
+
+// ── Hero Carousel: dynamic slides from newest tracks ──
+let heroSlideIndex = 0;
+let heroSlideTimer = null;
+
+function initHeroCarousel() {
+  if (playlist.length === 0) return;
+  // Sort newest first
+  const sorted = [...playlist].sort((a, b) => b.created_at - a.created_at).slice(0, 6);
+  const heroCard = document.querySelector('.hero-card');
+  if (!heroCard) return;
+
+  // Build slides
+  heroCard.innerHTML = '';
+
+  let slidesHTML = sorted.map((track, i) => {
+    const moodIcon = { chill:'spa', upbeat:'bolt', focus:'self_improvement', sad:'rainy_snow', workout:'fitness_center', jolly:'celebration' }[track.mood] || 'music_note';
+    return `
+    <div class="hero-slide ${i === 0 ? 'active' : ''}" data-index="${i}" data-track-id="${track.id}">
+      <div class="hero-content">
+        <span class="badge"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle;margin-right:4px;">${moodIcon}</span>NEWLY ADDED</span>
+        <h1 class="hero-title">${track.title}</h1>
+        <p class="hero-desc" style="margin-bottom:8px;">by <strong>${track.artist}</strong>${track.album && track.album !== 'Unknown' ? ` — ${track.album}` : ''}</p>
+        <div class="hero-actions">
+          <button class="btn-primary hero-play-btn" data-track-id="${track.id}">
+            <span class="material-symbols-rounded fill" style="font-size:18px;margin-right:6px;">play_arrow</span>PLAY
+          </button>
+          <button class="btn-follow hero-queue-btn" data-track-id="${track.id}">
+            <span class="material-symbols-rounded" style="font-size:18px;margin-right:6px;">playlist_add</span>ADD TO QUEUE
+          </button>
+        </div>
+      </div>
+      <div class="hero-image">
+        <img src="${track.img}" alt="${track.title}" style="border-radius:12px;object-fit:cover;width:220px;height:220px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" />
+      </div>
+    </div>`;
+  }).join('');
+
+  // Add dot indicators
+  const dotsHTML = `<div class="hero-dots">${sorted.map((_, i) => `<button class="hero-dot ${i === 0 ? 'active' : ''}" data-index="${i}"></button>`).join('')}</div>`;
+
+  heroCard.innerHTML = slidesHTML + dotsHTML;
+  heroCard.style.position = 'relative';
+  heroCard.style.overflow = 'hidden';
+
+  // Ensure heroSlideIndex starts at 0 for fresh renders
+  heroSlideIndex = 0;
+
+  // Wire play buttons
+  heroCard.querySelectorAll('.hero-play-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tid = btn.dataset.trackId;
+      const idx = playlist.findIndex(p => p.id === tid);
+      if (idx !== -1) { leaveRoom(); currentTrackIndex = idx; loadTrack(idx); if (!isPlaying) togglePlay(); }
+    });
   });
 
-  // Hero section click
-  document.getElementById('hero-play').addEventListener('click', () => {
-    leaveRoom();
-    currentTrackIndex = 0;
-    loadTrack(0);
-    if (!isPlaying) togglePlay();
+  // Wire queue buttons
+  heroCard.querySelectorAll('.hero-queue-btn').forEach(btn => {
+    btn.addEventListener('click', () => addToQueueId(btn.dataset.trackId, null));
   });
+
+  // Wire dots
+  heroCard.querySelectorAll('.hero-dot').forEach(dot => {
+    dot.addEventListener('click', () => goToHeroSlide(parseInt(dot.dataset.index), sorted));
+  });
+
+  // Auto-advance
+  if (heroSlideTimer) clearInterval(heroSlideTimer);
+  heroSlideTimer = setInterval(() => {
+    const currentSlides = document.querySelectorAll('.hero-slide');
+    if (currentSlides.length > 1) {
+      heroSlideIndex = (heroSlideIndex + 1) % currentSlides.length;
+      goToHeroSlide(heroSlideIndex);
+    }
+  }, 5000);
+}
+
+function goToHeroSlide(index, sorted) {
+  heroSlideIndex = index;
+  document.querySelectorAll('.hero-slide').forEach((s, i) => s.classList.toggle('active', i === index));
+  document.querySelectorAll('.hero-dot').forEach((d, i) => d.classList.toggle('active', i === index));
 }
 
 // -------------------------------------------------------------
@@ -559,12 +808,18 @@ btnCreateRoom.addEventListener('click', (e) => {
   handleStartRoom();
 });
 
-const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view', 'my-library-view', 'radio-view', 'liked-songs-view', 'upload-view'];
+const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view', 'my-library-view', 'radio-view', 'liked-songs-view', 'upload-view', 'artist-view'];
 
 function switchView(viewId) {
   views.forEach(v => {
     const el = document.getElementById(v);
-    if (el) el.style.display = (v === viewId) ? ((v === 'room-view' || v === 'upload-view') ? 'flex' : 'block') : 'none';
+    if (el) {
+      if (v === viewId) {
+        el.style.display = (v === 'room-view' || v === 'upload-view' || v === 'artist-view') ? 'flex' : 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
   });
   
   if (viewId === 'room-view') {
@@ -1026,8 +1281,8 @@ async function hostPlayNext() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Start the dynamically loading track timeline
   fetchPlaylist();
+  setupEventListeners();
 
   // ── Top Nav Routing ──
   const topNavMap = {
@@ -1074,7 +1329,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Catch remaining mock links
+  // ── Artist Card Event Delegation ──
+  document.addEventListener('click', (e) => {
+    const artistCard = e.target.closest('.artist-card');
+    if (artistCard) {
+      const name = artistCard.querySelector('.artist-name').textContent;
+      showArtistView(name);
+    }
+  });
+
+  // ── Search & Filter Logic ──
   document.querySelectorAll('a[href="#"]').forEach(a => {
     if (!a.classList.contains('nav-item') && !a.classList.contains('top-nav-item')) {
       a.addEventListener('click', e => e.preventDefault());

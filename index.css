@@ -426,6 +426,60 @@ input {
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(0, 212, 255, 0.1);
 }
 
+/* Hero Carousel Slides */
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateX(30px);
+  pointer-events: none;
+}
+
+.hero-slide.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+}
+
+.hero-slide .hero-image {
+  padding: 24px 32px 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* Hero Dot Indicators */
+.hero-dots {
+  position: absolute;
+  bottom: 16px;
+  left: 44px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.hero-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.hero-dot.active {
+  background: var(--primary);
+  width: 18px;
+  border-radius: 4px;
+  box-shadow: 0 0 6px var(--primary-glow);
+}
+
 /* Teal glow top-left inside hero */
 .hero-card::before {
   content: '';
@@ -1216,7 +1270,7 @@ input {
 
 .liked-track-row {
   display: grid;
-  grid-template-columns: 40px 52px 1fr 1fr 60px 40px;
+  grid-template-columns: 40px 52px 1fr 1fr 60px 40px 40px;
   align-items: center;
   gap: 16px;
   padding: 10px 12px;
@@ -1667,5 +1721,265 @@ input {
 .upload-field input[type="file"]:hover {
   border-color: var(--primary-subtle);
   color: var(--primary);
+}
+
+/* ══════════════════════════════════════
+   SMART RECOMMENDATIONS MODULE
+══════════════════════════════════════ */
+.smart-recs-wrapper {
+  position: relative;
+  margin-left: 8px;
+}
+
+/* ══════════════════════════════════════
+   SIDEBAR SMART RECOMMENDATIONS
+   (Moved from dropdown to persistent sidebar)
+   ══════════════════════════════════════ */
+.smart-recs-sidebar {
+  padding: 8px 0;
+}
+
+.mood-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 212, 255, 0.1);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.mood-indicator span:first-child {
+  color: var(--primary);
+  font-size: 20px;
+}
+
+#sidebar-mood-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+#sidebar-smart-recs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.smart-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.smart-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.smart-sidebar-art {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+}
+
+.smart-sidebar-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.smart-sidebar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.smart-sidebar-artist {
+  font-size: 10px;
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.smart-sidebar-add {
+  color: var(--on-surface-muted);
+  font-size: 18px;
+  transition: color 0.2s ease;
+}
+
+.smart-sidebar-item:hover .smart-sidebar-add {
+  color: var(--primary);
+}
+
+/* ══════════════════════════════════════
+   ARTIST DETAIL VIEW
+   ══════════════════════════════════════ */
+.artist-view-header {
+  height: 300px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 40px;
+  background: linear-gradient(to bottom, rgba(0, 212, 255, 0.2), var(--background));
+  border-radius: var(--radius-xl);
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.artist-view-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+}
+
+.artist-header-content {
+  position: relative;
+  z-index: 2;
+}
+
+.artist-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  backdrop-filter: blur(4px);
+}
+
+.artist-header-name {
+  font-size: 72px;
+  font-weight: 800;
+  margin: 0 0 16px 0;
+  letter-spacing: -2px;
+}
+
+.artist-header-stats {
+  font-size: 15px;
+  color: var(--on-surface-muted);
+  margin-bottom: 24px;
+}
+
+.artist-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.artist-tracks-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.smart-recs-header {
+  padding: 0 16px 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--on-surface);
+  font-size: 14px;
+}
+
+.smart-recs-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.smart-rec-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  transition: background 0.2s ease;
+  gap: 12px;
+}
+
+.smart-rec-item:hover {
+  background: var(--surface-hover);
+}
+
+.smart-rec-art {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.smart-rec-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.smart-rec-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.smart-rec-artist {
+  font-size: 11px;
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.smart-rec-add-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.smart-rec-add-btn:hover {
+  background: rgba(0, 212, 255, 0.1);
+  transform: scale(1.1);
+}
+
+/* ══════════════════════════════════════
+   NEWLY ADDED BADGE
+══════════════════════════════════════ */
+.badge-new {
+  display: inline-block;
+  background: linear-gradient(135deg, #FF007A 0%, #7928CA 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 10px rgba(255, 0, 122, 0.3);
 }
 

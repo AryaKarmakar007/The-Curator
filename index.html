@@ -6,7 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The Curator - Sonic Lens</title>
-  <link rel="stylesheet" href="./index.css?v=6" />
+  <link rel="stylesheet" href="./index.css?v=8" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <!-- Supabase -->
@@ -53,49 +53,14 @@
         </a>
 
         <div class="sidebar-section">
-          <p class="section-header">Tracks</p>
-          <div class="track-list-mini">
-            <div class="mini-track-item">
-              <div class="mini-art" style="background-image: url('https://images.unsplash.com/photo-1619983081563-430f63602796?q=80&w=80&auto=format&fit=crop'); background-size: cover;"></div>
-              <div class="mini-info">
-                <p class="mini-title">Young And Menace</p>
-                <p class="mini-artist">Fall Out Boy</p>
-              </div>
+          <p class="section-header">Smart Recommendations</p>
+          <div class="smart-recs-sidebar">
+            <div class="mood-indicator" id="sidebar-mood-indicator">
+              <span class="material-symbols-rounded">psychology</span>
+              <span id="sidebar-mood-text">Analyzing Mood...</span>
             </div>
-            <div class="mini-track-item">
-              <div class="mini-art" style="background-image: url('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=80&auto=format&fit=crop'); background-size: cover;"></div>
-              <div class="mini-info">
-                <p class="mini-title">Thunder</p>
-                <p class="mini-artist">Imagine Dragons</p>
-              </div>
-            </div>
-            <div class="mini-track-item">
-              <div class="mini-art" style="background-image: url('https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=80&auto=format&fit=crop'); background-size: cover;"></div>
-              <div class="mini-info">
-                <p class="mini-title">Jumpsuit</p>
-                <p class="mini-artist">Twenty One Pilots</p>
-              </div>
-            </div>
-            <div class="mini-track-item">
-              <div class="mini-art" style="background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=80&auto=format&fit=crop'); background-size: cover;"></div>
-              <div class="mini-info">
-                <p class="mini-title">Side Peace</p>
-                <p class="mini-artist">Snoop Dogg</p>
-              </div>
-            </div>
-            <div class="mini-track-item">
-              <div class="mini-art" style="background-image: url('https://images.unsplash.com/photo-1516280440502-12798e16fdcc?q=80&w=80&auto=format&fit=crop'); background-size: cover;"></div>
-              <div class="mini-info">
-                <p class="mini-title">Surrender</p>
-                <p class="mini-artist">Natalie</p>
-              </div>
-            </div>
-            <div class="mini-track-item mini-track-item--active">
-              <div class="mini-art" style="background-image: url('https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=80&auto=format&fit=crop'); background-size: cover;"></div>
-              <div class="mini-info">
-                <p class="mini-title">Told You So</p>
-                <p class="mini-artist">Paramore</p>
-              </div>
+            <div id="sidebar-smart-recs-list">
+              <!-- Populated by JS -->
             </div>
           </div>
         </div>
@@ -116,6 +81,9 @@
             <span class="material-symbols-rounded">search</span>
             <input type="text" placeholder="Search..." />
           </div>
+          
+          <button class="icon-btn" id="btn-create-room" style="display: none;"><span class="material-symbols-rounded">add_circle</span></button>
+
           <button class="icon-btn" id="btn-create-room" style="display: none;"><span class="material-symbols-rounded">add_circle</span></button>
           <button class="icon-btn"><span class="material-symbols-rounded">notifications</span></button>
           <button class="icon-btn"><span class="material-symbols-rounded">settings</span></button>
@@ -129,22 +97,7 @@
       <div class="view-container" id="home-view">
         <!-- Hero Section -->
         <section class="hero-card">
-          <div class="hero-content">
-            <span class="badge">NEW RELEASE</span>
-            <h1 class="hero-title">Flume: Skin</h1>
-            <p class="hero-desc">
-              The Grammy-winning second studio album from the Australian producer, featuring a unique blend of future bass and experimental pop.
-            </p>
-            <div class="hero-actions">
-              <button class="btn-primary" id="hero-play">
-                <span class="material-symbols-rounded fill" style="font-size:18px;margin-right:6px;">play_arrow</span>PLAY
-              </button>
-              <button class="btn-follow" id="btn-follow">
-                <span class="material-symbols-rounded" id="follow-icon" style="font-size:18px;margin-right:6px;">add</span>
-                <span id="follow-label">FOLLOW</span>
-              </button>
-            </div>
-          </div>
+          <!-- Dynamic Hero Content populated by JS -->
           <div class="hero-image">
             <img id="featured-img" src="./src/assets/hero.png" alt="Featured" />
           </div>
@@ -153,36 +106,12 @@
         <!-- Popular Albums -->
         <section class="grid-section">
           <div class="section-top">
-            <h2 class="section-title">Popular Albums</h2>
+            <h2 class="section-title">Recommended Albums</h2>
             <a href="#" class="view-all">VIEW ALL</a>
           </div>
-          <p class="section-subtitle">Top charts from across the globe</p>
-          <div class="album-grid">
-            <div class="album-card">
-              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
-              <p class="album-name">Children of Bodom</p>
-              <p class="album-artist">Hate Crew Deathroll</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
-              <p class="album-name">Black Water</p>
-              <p class="album-artist">Tinashe</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
-              <p class="album-name">Hurtz 2B Human</p>
-              <p class="album-artist">Pink</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
-              <p class="album-name">After Hours</p>
-              <p class="album-artist">The Weeknd</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="" alt="Album" class="placeholder-img"></div>
-              <p class="album-name">Folklore</p>
-              <p class="album-artist">Taylor Swift</p>
-            </div>
+          <p class="section-subtitle">Based on your recent listening</p>
+          <div class="album-grid" id="album-grid">
+            <!-- Populated by main.js with real tracks -->
           </div>
         </section>
 
@@ -194,28 +123,28 @@
           </div>
           <div class="artist-grid">
             <div class="artist-card">
-              <div class="artist-img" style="background-image: url('https://images.unsplash.com/photo-1516280440502-12798e16fdcc?q=80&w=300&auto=format&fit=crop'); background-size: cover;"></div>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/lady_gaga.png');background-size:cover;background-position:top center;"></div>
               <p class="artist-name">Lady Gaga</p>
             </div>
             <div class="artist-card">
-              <div class="artist-img" style="background-image: url('https://images.unsplash.com/photo-1520114002611-309d94943f55?q=80&w=300&auto=format&fit=crop'); background-size: cover; background-position: center;"></div>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/bruno_mars.png');background-size:cover;background-position:top center;"></div>
               <p class="artist-name">Bruno Mars</p>
             </div>
             <div class="artist-card">
-              <div class="artist-img" style="background-image: url('https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=300&auto=format&fit=crop'); background-size: cover;"></div>
-              <p class="artist-name">Beyoncé</p>
-            </div>
-            <div class="artist-card">
-              <div class="artist-img" style="background-image: url('https://images.unsplash.com/photo-1481822262522-83b6b158025c?q=80&w=300&auto=format&fit=crop'); background-size: cover; background-position: center;"></div>
-              <p class="artist-name">Drake</p>
-            </div>
-            <div class="artist-card">
-              <div class="artist-img" style="background-image: url('https://images.unsplash.com/photo-1502691876148-a84978e59af8?q=80&w=300&auto=format&fit=crop'); background-size: cover;"></div>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/billie_eilish.png');background-size:cover;background-position:top center;"></div>
               <p class="artist-name">Billie Eilish</p>
             </div>
             <div class="artist-card">
-              <div class="artist-img" style="background-image: url('https://images.unsplash.com/photo-1516057280387-9e7ec2ba8985?q=80&w=300&auto=format&fit=crop'); background-size: cover;"></div>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/drake.png');background-size:cover;background-position:top center;"></div>
+              <p class="artist-name">Drake</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('./src/assets/artists/ed_sheeran.png');background-size:cover;background-position:top center;"></div>
               <p class="artist-name">Ed Sheeran</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('./src/assets/artists/imagine_dragons.png');background-size:cover;background-position:top center;"></div>
+              <p class="artist-name">Imagine Dragons</p>
             </div>
           </div>
         </section>
@@ -262,22 +191,8 @@
           <p class="section-subtitle">Your curated tracks from across the platform.</p>
         </div>
         <section class="grid-section">
-          <div class="album-grid">
-            <div class="album-card">
-              <div class="album-art"><img src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
-              <p class="album-name">Vibes Playlist</p>
-              <p class="album-artist">Mixed Tracks • 42 Songs</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="https://images.unsplash.com/photo-1516057280387-9e7ec2ba8985?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
-              <p class="album-name">Acoustic Covers</p>
-              <p class="album-artist">Chill Settings • 12 Songs</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
-              <p class="album-name">Workout Motivation</p>
-              <p class="album-artist">Upbeat • 50 Songs</p>
-            </div>
+          <div class="album-grid" id="playlist-track-grid">
+            <!-- Dynamic content -->
           </div>
         </section>
       </div>
@@ -289,17 +204,8 @@
           <p class="section-subtitle">Jump back into what you played recently.</p>
         </div>
         <section class="grid-section">
-          <div class="album-grid">
-            <div class="album-card">
-              <div class="album-art"><img src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
-              <p class="album-name">Midnight Syntax</p>
-              <p class="album-artist">The Code Breakers</p>
-            </div>
-            <div class="album-card">
-              <div class="album-art"><img src="https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=500&auto=format&fit=crop" alt="Album"></div>
-              <p class="album-name">Urban Sounds</p>
-              <p class="album-artist">City Pop Ensemble</p>
-            </div>
+          <div class="album-grid" id="last-listening-grid">
+            <!-- Dynamic content -->
           </div>
         </section>
       </div>
@@ -307,18 +213,8 @@
       <!-- Recommended View -->
       <div class="view-container" id="recommended-view" style="display: none;">
         <div class="room-header">
-          <h1 class="hero-title">Auto Recommendations</h1>
-          <p class="section-subtitle">Tracks we think you'll fall in love with, based on your history and mood.</p>
-        </div>
-        
-        <div class="mood-selector">
-          <button class="mood-pill active" data-mood="all">All</button>
-          <button class="mood-pill" data-mood="chill">Chill</button>
-          <button class="mood-pill" data-mood="upbeat">Upbeat</button>
-          <button class="mood-pill" data-mood="focus">Focus</button>
-          <button class="mood-pill" data-mood="sad">Sad</button>
-          <button class="mood-pill" data-mood="workout">Workout</button>
-          <button class="mood-pill" data-mood="jolly">Jolly</button>
+          <h1 class="hero-title">Discover Tracks</h1>
+          <p class="section-subtitle">The hottest tracks played globally and our newest arrivals.</p>
         </div>
 
         <section class="recommended-tracks-section">
@@ -368,17 +264,61 @@
           </div>
           <div class="artist-grid">
             <div class="artist-card">
-              <div class="artist-img" style="background-image:url('https://images.unsplash.com/photo-1516280440502-12798e16fdcc?q=80&w=300&auto=format&fit=crop');background-size:cover;"></div>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/lady_gaga.png');background-size:cover;background-position:top center;"></div>
               <p class="artist-name">Lady Gaga</p>
             </div>
             <div class="artist-card">
-              <div class="artist-img" style="background-image:url('https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=300&auto=format&fit=crop');background-size:cover;"></div>
-              <p class="artist-name">Beyoncé</p>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/bruno_mars.png');background-size:cover;background-position:top center;"></div>
+              <p class="artist-name">Bruno Mars</p>
             </div>
             <div class="artist-card">
-              <div class="artist-img" style="background-image:url('https://images.unsplash.com/photo-1502691876148-a84978e59af8?q=80&w=300&auto=format&fit=crop');background-size:cover;"></div>
+              <div class="artist-img" style="background-image:url('./src/assets/artists/billie_eilish.png');background-size:cover;background-position:top center;"></div>
               <p class="artist-name">Billie Eilish</p>
             </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('./src/assets/artists/drake.png');background-size:cover;background-position:top center;"></div>
+              <p class="artist-name">Drake</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('./src/assets/artists/ed_sheeran.png');background-size:cover;background-position:top center;"></div>
+              <p class="artist-name">Ed Sheeran</p>
+            </div>
+            <div class="artist-card">
+              <div class="artist-img" style="background-image:url('./src/assets/artists/imagine_dragons.png');background-size:cover;background-position:top center;"></div>
+              <p class="artist-name">Imagine Dragons</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Artist Detail View -->
+      <div class="view-container" id="artist-view" style="display: none;">
+        <div class="artist-view-header">
+           <div class="artist-header-content">
+             <div class="artist-badge">Artist Profile</div>
+             <h1 class="artist-header-name" id="artist-name-display">Artist Name</h1>
+             <p class="artist-header-stats" id="artist-stats-display">0 Songs • 0 Monthly Listeners</p>
+             <div class="artist-header-actions">
+               <button class="btn-primary" id="btn-play-artist-all">
+                 <span class="material-symbols-rounded fill">play_arrow</span> PLAY ALL
+               </button>
+               <button class="btn-follow">FOLLOW</button>
+             </div>
+           </div>
+        </div>
+        
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Tracks</h2>
+          </div>
+          <div class="artist-tracks-list" id="artist-tracks-list">
+            <!-- Filtered tracks go here -->
+          </div>
+          <div id="artist-no-songs" style="display: none; padding: 60px 20px; text-align: center; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed var(--border);">
+             <span class="material-symbols-rounded" style="font-size: 48px; color: var(--on-surface-muted); margin-bottom: 16px;">library_music</span>
+             <h3 style="margin-bottom: 8px;">No songs added yet</h3>
+             <p style="color: var(--on-surface-muted); margin-bottom: 24px;">Be the first to upload music for this artist!</p>
+             <button class="btn-primary" onclick="switchView('upload-view')">UPLOAD NOW</button>
           </div>
         </section>
       </div>
@@ -582,7 +522,7 @@
   </div>
   <div class="queue-panel-backdrop" id="queue-panel-backdrop"></div>
 
-  <script src="./main.js?v=5"></script>
+  <script src="./main.js?v=7"></script>
 </body>
 
 </html>
