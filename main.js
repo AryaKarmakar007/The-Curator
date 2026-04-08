@@ -298,19 +298,29 @@ btnCreateRoom.addEventListener('click', (e) => {
   handleStartRoom();
 });
 
+const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view'];
+
+function switchView(viewId) {
+  views.forEach(v => {
+    const el = document.getElementById(v);
+    if (el) el.style.display = (v === viewId) ? (v === 'room-view' ? 'flex' : 'block') : 'none';
+  });
+  
+  if (viewId === 'room-view') {
+    btnCreateRoom.style.display = 'block';
+  } else {
+    btnCreateRoom.style.display = 'none';
+  }
+}
+
 function showRoomView() {
-  homeView.style.display = 'none';
-  roomView.style.display = 'flex';
-  btnCreateRoom.style.display = 'block';
+  switchView('room-view');
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   navRoom.classList.add('active');
 }
 
-function leaveRoom() {
+function leaveRoom(targetView = 'home-view') {
   currentRoomId = null;
-  homeView.style.display = 'block';
-  roomView.style.display = 'none';
-  btnCreateRoom.style.display = 'none';
   if (roomSubscription) supabaseClient.removeChannel(roomSubscription);
   if (syncInterval) {
     clearInterval(syncInterval);
@@ -319,16 +329,33 @@ function leaveRoom() {
   localIsPlaying = false;
   roomNameDisplay.textContent = 'Listening Room';
   roomStatus.textContent = 'Not connected';
+  
+  if (targetView) {
+    switchView(targetView);
+  }
 }
 
 // Side navigation home
 document.querySelectorAll('.nav-menu .nav-item').forEach(item => {
-  if (item.id === 'nav-room') return;
+  if (item.id === 'nav-room') return; // handled separately
+  
   item.addEventListener('click', (e) => {
     e.preventDefault();
-    leaveRoom();
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     item.classList.add('active');
+    
+    // routing logic
+    let targetView = 'home-view';
+    if (item.id === 'nav-playlist') targetView = 'playlist-view';
+    if (item.id === 'nav-last-listening') targetView = 'last-listening-view';
+    if (item.id === 'nav-recommended') targetView = 'recommended-view';
+    
+    // leave room and switch to target view
+    if (currentRoomId) {
+      leaveRoom(targetView);
+    } else {
+      switchView(targetView);
+    }
   });
 });
 

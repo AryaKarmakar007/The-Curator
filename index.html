@@ -23,19 +23,19 @@
       <div class="brand">The Curator</div>
 
       <nav class="nav-menu">
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" id="nav-playlist">
           <span class="material-symbols-rounded">playlist_play</span>
           <span>Playlist</span>
         </a>
-        <a href="#" class="nav-item active">
+        <a href="#" class="nav-item active" id="nav-my-playlist">
           <span class="material-symbols-rounded fill">library_music</span>
           <span>My Playlist</span>
         </a>
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" id="nav-last-listening">
           <span class="material-symbols-rounded">history</span>
           <span>Last Listening</span>
         </a>
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" id="nav-recommended">
           <span class="material-symbols-rounded">auto_awesome</span>
           <span>Recommended</span>
         </a>
@@ -218,6 +218,30 @@
               <button class="icon-btn fill" id="btn-send-chat"><span class="material-symbols-rounded">send</span></button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Playlist View -->
+      <div class="view-container" id="playlist-view" style="display: none;">
+        <div class="room-header">
+          <h1 class="hero-title">Playlist</h1>
+          <p class="section-subtitle">Your curated tracks from across the platform.</p>
+        </div>
+      </div>
+
+      <!-- Last Listening View -->
+      <div class="view-container" id="last-listening-view" style="display: none;">
+        <div class="room-header">
+          <h1 class="hero-title">Last Listening</h1>
+          <p class="section-subtitle">Jump back into what you played recently.</p>
+        </div>
+      </div>
+
+      <!-- Recommended View -->
+      <div class="view-container" id="recommended-view" style="display: none;">
+        <div class="room-header">
+          <h1 class="hero-title">Recommended</h1>
+          <p class="section-subtitle">Tracks we think you'll fall in love with.</p>
         </div>
       </div>
     </main>
