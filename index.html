@@ -23,14 +23,15 @@
       <div class="brand">The Curator</div>
 
       <nav class="nav-menu">
-        <a href="#" class="nav-item" id="nav-playlist">
-          <span class="material-symbols-rounded">playlist_play</span>
-          <span>Playlist</span>
-        </a>
+
         <a href="#" class="nav-item active" id="nav-my-playlist">
           <span class="material-symbols-rounded fill">library_music</span>
-          <span>My Playlist</span>
+          <span>My Library Playlists</span>
         </a>
+        <button class="btn-create-playlist" id="btn-new-playlist-sidebar">
+          <span class="material-symbols-rounded">add</span>
+          <span>Create Playlist</span>
+        </button>
         <a href="#" class="nav-item" id="nav-last-listening">
           <span class="material-symbols-rounded">history</span>
           <span>Last Listening</span>
@@ -82,10 +83,6 @@
             <input type="text" placeholder="Search..." />
           </div>
           
-          <button class="icon-btn" id="btn-create-room" style="display: none;"><span class="material-symbols-rounded">add_circle</span></button>
-
-          <button class="icon-btn" id="btn-create-room" style="display: none;"><span class="material-symbols-rounded">add_circle</span></button>
-          <button class="icon-btn"><span class="material-symbols-rounded">notifications</span></button>
           <button class="icon-btn"><span class="material-symbols-rounded">settings</span></button>
           <div class="user-profile">
             <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Profile" />
@@ -152,47 +149,123 @@
 
       <!-- Listening Room View -->
       <div class="view-container" id="room-view" style="display: none;">
-        <div class="room-header">
-          <h1 class="hero-title" id="room-name-display">Listening Room</h1>
-          <p class="section-subtitle" id="room-status">Not connected</p>
-        </div>
-        
-        <div class="room-layout">
-          <!-- Queue & Voting Section -->
-          <div class="queue-section">
-            <div class="section-top">
-              <h2 class="section-title">Up Next (Vote)</h2>
-              <button class="btn-outline btn-small" id="btn-add-song">Add Song</button>
-            </div>
-            
-            <div class="queue-list" id="queue-list">
-              <!-- Queue items populated by JS -->
-            </div>
+        <!-- Setup Screen (Visible when not in a room) -->
+        <div id="room-setup-view" class="room-setup-container">
+          <div class="setup-hero">
+            <h1 class="hero-title">Listening Room</h1>
+            <p class="section-subtitle">Experience music together in real-time.</p>
           </div>
           
-          <!-- Chat Section -->
-          <div class="chat-section">
-            <h2 class="section-title">Live Chat</h2>
-            <div class="chat-messages" id="chat-messages">
-              <!-- Messages populated by JS -->
+          <div class="setup-options">
+            <div class="setup-card" id="card-create-room">
+              <div class="setup-card-icon"><span class="material-symbols-rounded">add_circle</span></div>
+              <h3>Create Room</h3>
+              <p>Host your own session and invite friends with a code.</p>
+              <button class="btn-primary">START HOSTING</button>
             </div>
-            <div class="chat-input-wrapper">
-              <input type="text" id="chat-input" placeholder="Type a message (syncs to current time)..." />
-              <button class="icon-btn fill" id="btn-send-chat"><span class="material-symbols-rounded">send</span></button>
+            
+            <div class="setup-card" id="card-join-room">
+              <div class="setup-card-icon"><span class="material-symbols-rounded">group</span></div>
+              <h3>Join Room</h3>
+              <p>Enter a room code to listen and vote on tracks.</p>
+              <div class="join-input-group">
+                <input type="text" id="input-room-code" placeholder="ENTER CODE" maxlength="6" />
+                <button class="icon-btn" id="btn-join-room"><span class="material-symbols-rounded">arrow_forward</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Room Screen (Visible when connected) -->
+        <div id="room-active-view" style="display: none;">
+          <div class="room-header-flex">
+            <div class="room-header-info">
+              <h1 class="hero-title" id="room-name-display">Room Name</h1>
+              <div class="room-badges">
+                <span class="room-badge" id="room-code-badge">CODE: ------</span>
+                <span class="room-status-dot"></span>
+                <p class="room-subtitle" id="room-status">Connected</p>
+              </div>
+            </div>
+            <button class="btn-outline btn-small" id="btn-leave-room">LEAVE ROOM</button>
+          </div>
+          
+          <div class="room-layout">
+            <!-- Queue & Voting Section -->
+            <div class="queue-section">
+              <div class="section-top">
+                <h2 class="section-title">Up Next (Voting)</h2>
+                <button class="btn-primary" id="btn-add-song-room">
+                  <span class="material-symbols-rounded">add</span> ADD SONG
+                </button>
+              </div>
+              
+              <div class="queue-list" id="queue-list">
+                <!-- Top voted track populated by JS -->
+              </div>
+
+              <!-- Upcoming Tracks Section -->
+              <div class="upcoming-section" style="margin-top: 32px;">
+                <div class="section-top">
+                  <h2 class="section-title">Upcoming Tracks</h2>
+                </div>
+                <div class="upcoming-list" id="upcoming-list">
+                  <!-- Other queue items populated by JS -->
+                </div>
+              </div>
+            </div>
+            
+            <!-- Chat Section -->
+            <div class="chat-section">
+              <div class="section-top">
+                <h2 class="section-title">Live Chat</h2>
+                <div id="chat-user-count" class="chat-count">0 listening</div>
+              </div>
+              <div class="chat-messages" id="chat-messages">
+                <!-- Messages populated by JS -->
+              </div>
+              <div class="chat-input-wrapper">
+                <input type="text" id="chat-input" placeholder="Say something..." />
+                <button class="icon-btn fill" id="btn-send-chat"><span class="material-symbols-rounded">send</span></button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Playlist View -->
       <div class="view-container" id="playlist-view" style="display: none;">
         <div class="room-header">
-          <h1 class="hero-title">Playlist</h1>
-          <p class="section-subtitle">Your curated tracks from across the platform.</p>
+          <div class="playlist-header-content">
+            <h1 class="hero-title" id="playlist-view-title">My Playlists</h1>
+            <p class="section-subtitle" id="playlist-view-subtitle">Your curated collections.</p>
+          </div>
+          <div class="playlist-header-actions" id="playlist-detail-actions" style="display: none;">
+            <button class="btn-primary" id="btn-playlist-add-songs">
+              <span class="material-symbols-rounded">add_circle</span> ADD SONGS
+            </button>
+            <button class="btn-primary" id="btn-play-playlist">
+              <span class="material-symbols-rounded fill">play_arrow</span> PLAY ALL
+            </button>
+            <button class="btn-outline" id="btn-back-to-playlists">
+              <span class="material-symbols-rounded">arrow_back</span> BACK
+            </button>
+            <button class="icon-btn" id="btn-delete-current-playlist" title="Delete Playlist">
+              <span class="material-symbols-rounded">delete</span>
+            </button>
+          </div>
         </div>
-        <section class="grid-section">
-          <div class="album-grid" id="playlist-track-grid">
-            <!-- Dynamic content -->
+        
+        <!-- Playlist Selection Grid -->
+        <section class="grid-section" id="playlist-list-section">
+          <div class="album-grid" id="playlist-collection-grid">
+            <!-- Populated with playlist cards -->
+          </div>
+        </section>
+
+        <!-- Playlist Tracks List (Alternative to grid when viewing a specific playlist) -->
+        <section class="recommended-tracks-section" id="playlist-tracks-section" style="display: none;">
+          <div class="liked-track-list" id="playlist-track-list">
+            <!-- Populated with tracks -->
           </div>
         </section>
       </div>
@@ -321,47 +394,37 @@
              <button class="btn-primary" onclick="switchView('upload-view')">UPLOAD NOW</button>
           </div>
         </section>
-      </div>
-
-      <!-- Radio View -->
+      </div>      <!-- Radio View -->
       <div class="view-container" id="radio-view" style="display: none;">
         <div class="room-header">
-          <h1 class="hero-title">Radio</h1>
-          <p class="section-subtitle">Tune in to live and curated stations.</p>
+          <h1 class="hero-title">Sonic Radio</h1>
+          <p class="section-subtitle">Live stations, podcasts, and curated stories.</p>
         </div>
+
         <section class="grid-section">
           <div class="section-top">
-            <h2 class="section-title">Trending Stations</h2>
+            <h2 class="section-title">Featured Stations</h2>
           </div>
-          <div class="radio-grid">
-            <div class="radio-card">
-              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
-              <div class="radio-info">
-                <p class="radio-name">Electronic Beats</p>
-                <p class="radio-meta"><span class="live-dot"></span> 12.4K listeners</p>
-              </div>
-            </div>
-            <div class="radio-card">
-              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
-              <div class="radio-info">
-                <p class="radio-name">Lofi Hip-Hop</p>
-                <p class="radio-meta"><span class="live-dot"></span> 8.9K listeners</p>
-              </div>
-            </div>
-            <div class="radio-card">
-              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1493225457124-a1a2a5f1bb1c?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
-              <div class="radio-info">
-                <p class="radio-name">Indie Vibes FM</p>
-                <p class="radio-meta"><span class="live-dot"></span> 5.2K listeners</p>
-              </div>
-            </div>
-            <div class="radio-card">
-              <div class="radio-art" style="background-image:url('https://images.unsplash.com/photo-1516280440502-12798e16fdcc?q=80&w=600&auto=format&fit=crop');background-size:cover;"></div>
-              <div class="radio-info">
-                <p class="radio-name">Pop Hits 24/7</p>
-                <p class="radio-meta"><span class="live-dot"></span> 22.1K listeners</p>
-              </div>
-            </div>
+          <div class="album-grid" id="radio-stations-grid">
+            <!-- Stations -->
+          </div>
+        </section>
+
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Top Podcasts</h2>
+          </div>
+          <div class="album-grid" id="radio-podcasts-grid">
+            <!-- Podcasts -->
+          </div>
+        </section>
+
+        <section class="grid-section">
+          <div class="section-top">
+            <h2 class="section-title">Immersive Stories</h2>
+          </div>
+          <div class="album-grid" id="radio-stories-grid">
+            <!-- Stories -->
           </div>
         </section>
       </div>
@@ -521,6 +584,49 @@
     </div>
   </div>
   <div class="queue-panel-backdrop" id="queue-panel-backdrop"></div>
+
+  <!-- Playlist Creation Modal -->
+
+  <div class="modal-overlay" id="modal-create-playlist">
+    <div class="modal-content">
+      <h3 class="modal-title">Create New Playlist</h3>
+      <input type="text" id="input-playlist-name" placeholder="Playlist Name" class="modal-input" />
+      <div class="modal-actions">
+        <button class="btn-outline" id="btn-cancel-playlist">CANCEL</button>
+        <button class="btn-primary" id="btn-confirm-playlist">CREATE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add to Playlist Selector Modal -->
+  <div class="modal-overlay" id="modal-add-to-playlist">
+    <div class="modal-content">
+      <h3 class="modal-title">Add to Playlist</h3>
+      <div class="playlist-selector-list" id="playlist-selector-list">
+        <!-- List of playlists -->
+      </div>
+      <div class="modal-actions">
+        <button class="btn-outline" id="btn-cancel-add">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Track Selector Modal -->
+  <div class="modal-overlay" id="modal-global-track-selector">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 class="modal-title">Select Songs to Add</h3>
+        <button class="icon-btn" id="btn-close-selector"><span class="material-symbols-rounded">close</span></button>
+      </div>
+      <div class="modal-search">
+        <span class="material-symbols-rounded">search</span>
+        <input type="text" id="input-selector-search" placeholder="Search global tracks..." />
+      </div>
+      <div class="selector-track-list" id="selector-track-list">
+        <!-- List of all tracks -->
+      </div>
+    </div>
+  </div>
 
   <script src="./main.js?v=7"></script>
 </body>

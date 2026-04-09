@@ -65,6 +65,14 @@ let volume = 0.7;
 // Liked Songs State (persisted in localStorage)
 let likedSongs = JSON.parse(localStorage.getItem('likedSongs') || '[]');
 
+// User Playlists State
+let userPlaylists = JSON.parse(localStorage.getItem('userPlaylists') || '[]');
+let currentPlaylistId = null;
+
+function savePlaylists() {
+  localStorage.setItem('userPlaylists', JSON.stringify(userPlaylists));
+}
+
 // Play History State (persisted in localStorage)
 let playHistory = JSON.parse(localStorage.getItem('playHistory') || '[]');
 
@@ -126,6 +134,33 @@ const artistStatsDisplay = document.getElementById('artist-stats-display');
 const artistTracksList = document.getElementById('artist-tracks-list');
 const artistNoSongs = document.getElementById('artist-no-songs');
 const btnPlayArtistAll = document.getElementById('btn-play-artist-all');
+
+// New Playlist System Elements
+const playlistViewTitle = document.getElementById('playlist-view-title');
+const playlistViewSubtitle = document.getElementById('playlist-view-subtitle');
+const playlistCollectionGrid = document.getElementById('playlist-collection-grid');
+const playlistTracksSection = document.getElementById('playlist-tracks-section');
+const playlistListSection = document.getElementById('playlist-list-section');
+const playlistTrackList = document.getElementById('playlist-track-list');
+const playlistDetailActions = document.getElementById('playlist-detail-actions');
+
+const modalCreatePlaylist = document.getElementById('modal-create-playlist');
+const modalAddToPlaylist = document.getElementById('modal-add-to-playlist');
+const modalGlobalTrackSelector = document.getElementById('modal-global-track-selector');
+const inputPlaylistName = document.getElementById('input-playlist-name');
+const inputSelectorSearch = document.getElementById('input-selector-search');
+const playlistSelectorList = document.getElementById('playlist-selector-list');
+const selectorTrackList = document.getElementById('selector-track-list');
+
+const btnNewPlaylistSidebar = document.getElementById('btn-new-playlist-sidebar');
+const btnConfirmPlaylist = document.getElementById('btn-confirm-playlist');
+const btnCancelPlaylist = document.getElementById('btn-cancel-playlist');
+const btnCancelAdd = document.getElementById('btn-cancel-add');
+const btnCloseSelector = document.getElementById('btn-close-selector');
+const btnBackToPlaylists = document.getElementById('btn-back-to-playlists');
+const btnPlayPlaylist = document.getElementById('btn-play-playlist');
+const btnPlaylistAddSongs = document.getElementById('btn-playlist-add-songs');
+const btnDeleteCurrentPlaylist = document.getElementById('btn-delete-current-playlist');
 
 
 function generateUUID() {
@@ -505,6 +540,9 @@ function renderRecommendations() {
           <button type="button" class="delete-track-btn" title="Permanently Remove" onclick="deleteTrack('${track.id}', event)">
             <span class="material-symbols-rounded" style="color:var(--primary); font-size:20px;">delete_forever</span>
           </button>
+          <button type="button" class="add-to-playlist-btn" title="Add to Playlist" onclick="openAddTrackToPlaylistModal('${track.id}', event)">
+            <span class="material-symbols-rounded">playlist_add</span>
+          </button>
         `;
         // double click to play right away
         row.addEventListener('dblclick', () => {
@@ -670,6 +708,9 @@ function showArtistView(artistName) {
          <button type="button" class="delete-track-btn" title="Permanently Remove" onclick="deleteTrack('${track.id}', event)">
            <span class="material-symbols-rounded" style="color:var(--primary); font-size:20px;">delete_forever</span>
          </button>
+         <button type="button" class="add-to-playlist-btn" title="Add to Playlist" onclick="openAddTrackToPlaylistModal('${track.id}', event)">
+           <span class="material-symbols-rounded">playlist_add</span>
+         </button>
        `;
        row.addEventListener('dblclick', () => {
          const idx = playlist.findIndex(p => p.id === track.id);
@@ -779,34 +820,7 @@ function goToHeroSlide(index, sorted) {
   document.querySelectorAll('.hero-dot').forEach((d, i) => d.classList.toggle('active', i === index));
 }
 
-// -------------------------------------------------------------
-// Room UI Handlers
-// -------------------------------------------------------------
-
-async function handleStartRoom() {
-  const code = prompt('Enter Room ID to join, or leave blank to create a new room:');
-  if (code !== null) {
-    if (code.trim() === '') {
-      await createRoom();
-    } else {
-      await joinRoom(code.trim());
-    }
-  }
-}
-
-navRoom.addEventListener('click', (e) => {
-  e.preventDefault();
-  if (!currentRoomId) {
-    handleStartRoom();
-  } else {
-    showRoomView();
-  }
-});
-
-btnCreateRoom.addEventListener('click', (e) => {
-  e.preventDefault();
-  handleStartRoom();
-});
+// Legacy Room logic removed in favor of the new Room Entry Dashboard at the bottom of main.js
 
 const views = ['home-view', 'room-view', 'playlist-view', 'last-listening-view', 'recommended-view', 'my-library-view', 'radio-view', 'liked-songs-view', 'upload-view', 'artist-view'];
 
@@ -865,13 +879,15 @@ document.querySelectorAll('.nav-menu .nav-item').forEach(item => {
 
     // routing logic
     let targetView = 'home-view';
-    if (item.id === 'nav-playlist')       targetView = 'playlist-view';
+    if (item.id === 'nav-my-playlist')     targetView = 'playlist-view';
     if (item.id === 'nav-last-listening') targetView = 'last-listening-view';
     if (item.id === 'nav-recommended')    targetView = 'recommended-view';
     if (item.id === 'nav-liked')          targetView = 'liked-songs-view';
     if (item.id === 'nav-upload')         targetView = 'upload-view';
 
     if (targetView === 'liked-songs-view') renderLikedSongs();
+    if (targetView === 'playlist-view') showPlaylists();
+    if (targetView === 'last-listening-view') renderLastListening();
 
     if (currentRoomId) {
       leaveRoom(targetView);
@@ -959,6 +975,9 @@ function renderLikedSongs() {
       <button class="liked-track-remove" title="Unlike" onclick="unlikeTrack('${track.id}')">
         <span class="material-symbols-rounded fill" style="color:#ff4d6d;font-size:18px;">favorite</span>
       </button>
+      <button type="button" class="add-to-playlist-btn" title="Add to Playlist" onclick="openAddTrackToPlaylistModal('${track.id}', event)">
+        <span class="material-symbols-rounded">playlist_add</span>
+      </button>
     `;
     row.addEventListener('dblclick', () => {
       const idx = playlist.findIndex(p => p.id === track.id);
@@ -1006,10 +1025,12 @@ document.getElementById('btn-play-liked')?.addEventListener('click', () => {
 
 async function createRoom() {
   const roomId = generateUUID();
+  const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   const { data, error } = await supabaseClient.from('rooms').insert([{
     id: roomId,
     name: `${userName}'s Room`,
     host_id: userId,
+    room_code: roomCode,
     is_playing: false
   }]).select().single();
 
@@ -1019,6 +1040,19 @@ async function createRoom() {
     return;
   }
   isHost = true;
+  await joinRoom(data.id);
+}
+
+async function joinRoomByCode(code) {
+  const { data, error } = await supabaseClient.from('rooms')
+    .select('*')
+    .eq('room_code', code.toUpperCase())
+    .single();
+    
+  if (error || !data) {
+    alert('Invalid room code!');
+    return;
+  }
   await joinRoom(data.id);
 }
 
@@ -1032,13 +1066,17 @@ async function joinRoom(roomId) {
   currentRoomId = roomId;
   isHost = data.host_id === userId;
   roomNameDisplay.textContent = data.name + (isHost ? ' (Host)' : '');
-  roomStatus.textContent = `Room ID: ${roomId}`;
+  roomStatus.textContent = `Connected`;
+  document.getElementById('room-code-badge').textContent = `CODE: ${data.room_code || '------'}`;
+  
+  // View states
+  document.getElementById('room-setup-view').style.display = 'none';
+  document.getElementById('room-active-view').style.display = 'block';
   
   // Pause any local track playing
   isPlaying = false;
   audioPlayer.pause();
   
-  showRoomView();
   setupRealtime();
   fetchInitialData();
   
@@ -1075,17 +1113,22 @@ async function fetchInitialData() {
 }
 
 async function fetchQueue() {
+  if (!currentRoomId) return;
   const { data, error } = await supabaseClient.from('queue')
-    .select('id, track_id, track_name, track_artist, votes, submitted_by')
-    .eq('room_id', currentRoomId)
-    .order('votes', { ascending: false })
-    .order('created_at', { ascending: true });
+    .select('*')
+    .eq('room_id', currentRoomId);
     
-  if (!error && data) {
-    roomQueue = data;
-    renderRoomQueue();
-    if (queuePanel && queuePanel.getAttribute('aria-hidden') !== 'true') renderQueue();
-  }
+  if (error) return console.error('Error fetching queue:', error);
+  
+  // Sort by vote count (length of voter_ids)
+  roomQueue = data.sort((a, b) => {
+    const votesA = (a.voter_ids || []).length;
+    const votesB = (b.voter_ids || []).length;
+    if (votesB !== votesA) return votesB - votesA;
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  });
+  
+  renderRoomQueue();
 }
 
 async function fetchMessages() {
@@ -1101,28 +1144,133 @@ async function fetchMessages() {
 }
 
 function renderRoomQueue() {
+  const upcomingList = document.getElementById('upcoming-list');
   queueList.innerHTML = '';
-  roomQueue.forEach(item => {
-    const el = document.createElement('div');
-    el.className = 'queue-item';
-    el.innerHTML = `
-      <div class="queue-item-info">
-        <span class="queue-item-name">${item.track_name}</span>
-        <span class="queue-item-artist">${item.track_artist}</span>
+  if (upcomingList) upcomingList.innerHTML = '';
+
+  if (roomQueue.length === 0) {
+    queueList.innerHTML = '<p class="empty-msg">The queue is empty. Use the + button to vote for a song!</p>';
+    return;
+  }
+  
+  // 1. Render Top Voted Track (Up Next)
+  const topTrack = roomQueue[0];
+  const topVotes = (topTrack.voter_ids || []).length;
+  const topHasVoted = (topTrack.voter_ids || []).includes(userId);
+  
+  const upNextDiv = document.createElement('div');
+  upNextDiv.className = `queue-item top-voted`;
+  upNextDiv.innerHTML = `
+    <div class="vote-control">
+      <button class="btn-vote ${topHasVoted ? 'voted' : ''}" onclick="window.voteForTrack('${topTrack.id}')">
+        <span class="material-symbols-rounded">expand_less</span>
+      </button>
+      <span class="vote-count">${topVotes}</span>
+    </div>
+    <div class="queue-track-info">
+      <p class="q-title">${topTrack.track_name}</p>
+      <p class="q-artist">${topTrack.track_artist}</p>
+    </div>
+    ${isHost ? `
+      <div class="host-controls">
+        <button class="icon-btn" onclick="window.playNextFromQueue('${topTrack.id}')" title="Play Now">
+          <span class="material-symbols-rounded">play_arrow</span>
+        </button>
+        <button class="icon-btn btn-remove-room" data-id="${topTrack.id}" title="Remove">
+          <span class="material-symbols-rounded">close</span>
+        </button>
       </div>
-      <div class="queue-item-votes">
-        <div class="vote-controls">
-          <button class="vote-btn" onclick="voteQueue('${item.id}', 1)"><span class="material-symbols-rounded">stat_3</span></button>
-        </div>
-        <span class="vote-count">${item.votes}</span>
-        <div class="vote-controls">
-          <button class="vote-btn" onclick="voteQueue('${item.id}', -1)"><span class="material-symbols-rounded">stat_minus_3</span></button>
-        </div>
-      </div>
-    `;
-    queueList.appendChild(el);
-  });
+    ` : ''}
+  `;
+  queueList.appendChild(upNextDiv);
+
+  // 2. Render Remaining Tracks (Upcoming)
+  if (upcomingList) {
+    const upcomingTracks = roomQueue.slice(1);
+    if (upcomingTracks.length === 0) {
+      upcomingList.innerHTML = '<p style="color:var(--on-surface-muted); font-size:12px; padding:10px;">No more upcoming tracks.</p>';
+    } else {
+      upcomingTracks.forEach((item) => {
+        const votes = (item.voter_ids || []).length;
+        const hasVoted = (item.voter_ids || []).includes(userId);
+        const div = document.createElement('div');
+        div.className = 'upcoming-item';
+        div.innerHTML = `
+          <div class="upcoming-track-info">
+            <p class="upcoming-title">${item.track_name}</p>
+            <p class="upcoming-artist">${item.track_artist}</p>
+          </div>
+          <div class="upcoming-vote">
+            <span class="material-symbols-rounded ${hasVoted ? 'fill' : ''}" style="${hasVoted ? 'color:var(--primary)' : ''}" onclick="window.voteForTrack('${item.id}')">thumb_up</span>
+            <span>${votes}</span>
+          </div>
+          ${isHost ? `
+            <button class="icon-btn btn-remove-room" data-id="${item.id}" title="Remove">
+              <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+            </button>
+          ` : ''}
+        `;
+        upcomingList.appendChild(div);
+      });
+    }
+  }
 }
+
+// Event Delegation for Room Queue
+const roomQueueEventHandler = async (e) => {
+  const removeBtn = e.target.closest('.btn-remove-room');
+  if (removeBtn) {
+    e.stopPropagation();
+    const qid = removeBtn.getAttribute('data-id');
+    console.log('[DEBUG: ROOM] REMOVE click detected for ID:', qid);
+    await window.removeFromRoomQueue(qid);
+    return;
+  }
+};
+
+if (queueList) {
+  queueList.addEventListener('click', roomQueueEventHandler);
+}
+
+// Target the upcoming list as well
+document.addEventListener('DOMContentLoaded', () => {
+  const upcomingList = document.getElementById('upcoming-list');
+  if (upcomingList) {
+    upcomingList.addEventListener('click', roomQueueEventHandler);
+  }
+});
+
+window.voteForTrack = async function(queueItemId) {
+  const item = roomQueue.find(q => q.id === queueItemId);
+  if (!item) return;
+  
+  let voters = Array.isArray(item.voter_ids) ? [...item.voter_ids] : [];
+  if (voters.includes(userId)) {
+    voters = voters.filter(id => id !== userId);
+  } else {
+    voters.push(userId);
+  }
+  
+  await supabaseClient.from('queue')
+    .update({ voter_ids: voters })
+    .eq('id', queueItemId);
+};
+
+window.playNextFromQueue = async function(queueItemId) {
+  if (!isHost) return;
+  const item = roomQueue.find(q => q.id === queueItemId);
+  if (!item) return;
+  
+  // Set as current track
+  await supabaseClient.from('rooms').update({
+    current_track_id: item.track_id,
+    is_playing: true,
+    started_at: new Date().toISOString()
+  }).eq('id', currentRoomId);
+  
+  // Remove from queue
+  await window.removeFromRoomQueue(queueItemId);
+};
 
 function appendMessage(msg) {
   const el = document.createElement('div');
@@ -1150,25 +1298,51 @@ window.voteQueue = async function(queueId, value) {
   }
 }
 
-btnAddSong.addEventListener('click', async () => {
-  const pListStr = playlist.map((p, i) => `${i}: ${p.title}`).join('\n');
-  const index = prompt(`Enter song number to add:\n${pListStr}`);
-  if (index !== null && playlist[index]) {
-    const track = playlist[index];
-    await supabaseClient.from('queue').insert([{
-      room_id: currentRoomId,
-      track_id: track.id,
-      track_name: track.title,
-      track_artist: track.artist,
-      submitted_by: userId
-    }]);
-  }
-});
+async function addTrackToRoomQueue(track) {
+  if (!currentRoomId) return;
+  await supabaseClient.from('queue').insert([{
+    room_id: currentRoomId,
+    track_id: track.id,
+    track_name: track.title,
+    track_artist: track.artist,
+    submitted_by: userId,
+    voter_ids: [userId] // Initial vote from submitter
+  }]);
+}
 
-btnSendChat.addEventListener('click', sendChat);
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') sendChat();
-});
+window.removeFromRoomQueue = async function(queueItemId) {
+  console.log('[DEBUG: ROOM] Attempting removal:', {
+    targetId: queueItemId,
+    isHost: isHost,
+    userId: userId,
+    roomId: currentRoomId
+  });
+
+  if (!queueItemId) {
+    console.error('[DEBUG: ROOM] No queueItemId provided!');
+    return;
+  }
+
+  // Optimistic UI Update: Remove from local array immediately
+  roomQueue = roomQueue.filter(item => item.id !== queueItemId);
+  renderRoomQueue();
+
+  const { error } = await supabaseClient
+    .from('queue')
+    .delete()
+    .eq('id', queueItemId);
+
+  if (error) {
+    console.error('[DEBUG: ROOM] Removal failed:', error);
+    alert('Failed to remove song. Check console for details.');
+    // Rollback optimistic update if failed
+    fetchQueue();
+  } else {
+    console.log('[DEBUG: ROOM] Removal successful');
+    // Ensure state is perfectly synced
+    fetchQueue();
+  }
+};
 
 async function sendChat() {
   const text = chatInput.value.trim();
@@ -1246,6 +1420,11 @@ function syncPlaybackFromState(room) {
       syncInterval = null;
     }
   }
+
+  // If host, observe track end to play next top voted
+  if (isHost && audioPlayer.ended && roomQueue.length > 0) {
+    playNextFromQueue(roomQueue[0].id);
+  }
 }
 
 async function hostSetPlayback(playing) {
@@ -1300,7 +1479,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetView = topNavMap[item.id];
       if (targetView) {
         if (currentRoomId) leaveRoom(targetView);
-        else switchView(targetView);
+        else {
+          switchView(targetView);
+          if (targetView === 'last-listening-view') renderLastListening();
+          if (targetView === 'radio-view') renderRadioView();
+        }
 
         // Clear sidebar active when switching to top-nav views
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -1325,6 +1508,96 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFollow.classList.remove('following');
         followIcon.textContent = 'add';
         followLabel.textContent = 'FOLLOW';
+      }
+    });
+  }
+
+  // ── Hook up New Playlist Events ──
+  if (btnNewPlaylistSidebar) btnNewPlaylistSidebar.addEventListener('click', openCreatePlaylistModal);
+  if (btnCancelPlaylist) btnCancelPlaylist.addEventListener('click', closeCreatePlaylistModal);
+  if (btnCancelAdd) btnCancelAdd.addEventListener('click', () => modalAddToPlaylist.classList.remove('active'));
+  if (btnCloseSelector) btnCloseSelector.addEventListener('click', () => modalGlobalTrackSelector.classList.remove('active'));
+  if (btnPlaylistAddSongs) btnPlaylistAddSongs.addEventListener('click', openGlobalTrackSelector);
+
+  if (inputSelectorSearch) {
+    inputSelectorSearch.addEventListener('input', () => renderGlobalTrackSelector(inputSelectorSearch.value));
+  }
+
+  if (btnConfirmPlaylist) {
+    btnConfirmPlaylist.addEventListener('click', () => {
+      const name = inputPlaylistName.value.trim();
+      if (name) {
+        const newPl = {
+          id: 'pl_' + Date.now(),
+          name: name,
+          tracks: []
+        };
+        userPlaylists.push(newPl);
+        savePlaylists();
+        closeCreatePlaylistModal();
+        if (document.getElementById('playlist-view').style.display !== 'none') {
+            renderPlaylistCollection();
+        }
+      }
+    });
+  }
+
+  if (btnBackToPlaylists) btnBackToPlaylists.addEventListener('click', showPlaylists);
+
+  // ── Listening Room Setup ──
+  const btnCreateRoomNew = document.querySelector('#card-create-room button');
+  const btnJoinRoomNew = document.getElementById('btn-join-room');
+  const inputRoomCode = document.getElementById('input-room-code');
+  const btnLeaveRoom = document.getElementById('btn-leave-room');
+  const btnAddSongRoom = document.getElementById('btn-add-song-room');
+
+  if (btnAddSongRoom) {
+    btnAddSongRoom.addEventListener('click', () => openGlobalTrackSelector('room'));
+  }
+
+  if (btnCreateRoomNew) btnCreateRoomNew.addEventListener('click', createRoom);
+  if (btnJoinRoomNew) {
+    btnJoinRoomNew.addEventListener('click', () => {
+      const code = inputRoomCode.value.trim();
+      if (code) joinRoomByCode(code);
+    });
+  }
+  if (btnLeaveRoom) {
+    btnLeaveRoom.addEventListener('click', () => {
+       leaveRoom('home-view');
+    });
+  }
+
+  // Override sidebar room button
+  const btnRooms = document.getElementById('nav-room');
+  if (btnRooms) {
+    btnRooms.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView('room-view');
+      if (!currentRoomId) {
+        document.getElementById('room-setup-view').style.display = 'block';
+        document.getElementById('room-active-view').style.display = 'none';
+      } else {
+        document.getElementById('room-setup-view').style.display = 'none';
+        document.getElementById('room-active-view').style.display = 'block';
+      }
+    });
+  }
+
+  if (btnPlayPlaylist) {
+    btnPlayPlaylist.addEventListener('click', () => {
+      const pl = userPlaylists.find(p => p.id === currentPlaylistId);
+      if (pl && pl.tracks.length > 0) {
+        const firstTrack = pl.tracks[0];
+        const idx = playlist.findIndex(p => p.id === firstTrack.id);
+        if(idx !== -1) {
+           currentTrackIndex = idx;
+           loadTrack(idx);
+           if(!isPlaying) togglePlay();
+           // Queue the rest
+           userQueue = [...pl.tracks.slice(1)];
+           renderQueue();
+        }
       }
     });
   }
@@ -1421,3 +1694,327 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+// -------------------------------------------------------------
+// Multi-Playlist Logic
+// -------------------------------------------------------------
+
+function showPlaylists() {
+  currentPlaylistId = null;
+  playlistViewTitle.textContent = "My Library Playlists";
+  playlistViewSubtitle.textContent = "Your curated collections.";
+  
+  playlistListSection.style.display = 'block';
+  playlistTracksSection.style.display = 'none';
+  playlistDetailActions.style.display = 'none';
+  
+  renderPlaylistCollection();
+}
+
+function renderPlaylistCollection() {
+  playlistCollectionGrid.innerHTML = '';
+  
+  if (userPlaylists.length === 0) {
+    playlistCollectionGrid.innerHTML = `
+      <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 20px; border: 1px dashed var(--border);">
+         <span class="material-symbols-rounded" style="font-size: 48px; color: var(--on-surface-muted); margin-bottom: 16px;">library_music</span>
+         <h3 style="margin-bottom: 8px;">No playlists yet</h3>
+         <p style="color: var(--on-surface-muted); margin-bottom: 24px;">Create your first playlist to start organizing your music!</p>
+         <button class="btn-primary" onclick="openCreatePlaylistModal()">CREATE PLAYLIST</button>
+      </div>
+    `;
+    return;
+  }
+  
+  userPlaylists.forEach(pl => {
+    const card = document.createElement('div');
+    card.className = 'playlist-card';
+    card.innerHTML = `
+      <div class="playlist-art-stack">
+        <span class="material-symbols-rounded">queue_music</span>
+      </div>
+      <div class="playlist-card-name">${pl.name}</div>
+      <div class="playlist-card-count">${pl.tracks.length} tracks</div>
+    `;
+    card.addEventListener('click', () => showPlaylistDetail(pl.id));
+    playlistCollectionGrid.appendChild(card);
+  });
+}
+
+function showPlaylistDetail(playlistId) {
+  const pl = userPlaylists.find(p => p.id === playlistId);
+  if (!pl) return;
+  
+  currentPlaylistId = playlistId;
+  playlistViewTitle.textContent = pl.name;
+  playlistViewSubtitle.textContent = `${pl.tracks.length} tracks • Created by you`;
+  
+  playlistListSection.style.display = 'none';
+  playlistTracksSection.style.display = 'block';
+  playlistDetailActions.style.display = 'flex';
+  
+  renderPlaylistTracksListing(pl);
+}
+
+function renderPlaylistTracksListing(playlistObj) {
+  playlistTrackList.innerHTML = '';
+  
+  if (playlistObj.tracks.length === 0) {
+     playlistTrackList.innerHTML = '<p style="padding:40px;text-align:center;color:var(--on-surface-muted);">No songs in this playlist yet.</p>';
+     return;
+  }
+  
+  playlistObj.tracks.forEach((track, i) => {
+    const row = document.createElement('div');
+    row.className = 'liked-track-row';
+    row.innerHTML = `
+      <span class="liked-track-num">${(i + 1).toString().padStart(2, '0')}</span>
+      <div class="liked-track-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;"></div>
+      <div class="liked-track-info">
+        <span class="liked-track-title">${track.title}</span>
+        <span class="liked-track-artist">${track.artist}</span>
+      </div>
+      <span class="liked-track-album">${track.album || 'Unknown'}</span>
+      <span class="liked-track-duration">${track.time || '—'}</span>
+      <button type="button" class="liked-track-remove" title="Remove from Playlist" onclick="event.stopPropagation(); removeTrackFromCurrentPlaylist('${track.id}')">
+        <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+      </button>
+    `;
+    row.addEventListener('dblclick', () => {
+      const idx = playlist.findIndex(p => p.id === track.id);
+      if (idx !== -1) {
+        currentTrackIndex = idx;
+        loadTrack(idx);
+        if (!isPlaying) togglePlay();
+      }
+    });
+    playlistTrackList.appendChild(row);
+  });
+}
+
+window.removeTrackFromCurrentPlaylist = function(trackId) {
+  const pl = userPlaylists.find(p => p.id === currentPlaylistId);
+  if (!pl) return;
+  pl.tracks = pl.tracks.filter(t => t.id !== trackId);
+  savePlaylists();
+  showPlaylistDetail(currentPlaylistId);
+};
+
+// Modal Handlers
+function openCreatePlaylistModal() {
+  modalCreatePlaylist.classList.add('active');
+  inputPlaylistName.focus();
+}
+
+function closeCreatePlaylistModal() {
+  modalCreatePlaylist.classList.remove('active');
+  inputPlaylistName.value = '';
+}
+
+function openAddTrackToPlaylistModal(trackId, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
+  const track = playlist.find(t => t.id === trackId);
+  if (!track) return;
+  
+  modalAddToPlaylist.classList.add('active');
+  playlistSelectorList.innerHTML = '';
+  
+  if (userPlaylists.length === 0) {
+    playlistSelectorList.innerHTML = '<p style="padding:20px;text-align:center;color:var(--on-surface-muted);font-size:13px;">No playlists found. Create one first!</p>';
+  } else {
+    userPlaylists.forEach(pl => {
+      const item = document.createElement('div');
+      item.className = 'playlist-selector-item';
+      item.innerHTML = `
+        <span class="material-symbols-rounded">playlist_add</span>
+        <div class="playlist-selector-info">
+          <span class="playlist-selector-name">${pl.name}</span>
+          <span class="playlist-selector-count">${pl.tracks.length} tracks</span>
+        </div>
+      `;
+      item.onclick = () => {
+        addTrackToPlaylist(pl.id, track);
+        modalAddToPlaylist.classList.remove('active');
+      };
+      playlistSelectorList.appendChild(item);
+    });
+  }
+}
+
+function addTrackToPlaylist(playlistId, track) {
+  const pl = userPlaylists.find(p => p.id === playlistId);
+  if (!pl) return;
+  
+  if (pl.tracks.some(t => t.id === track.id)) {
+    // Already exists
+    return;
+  }
+  
+  pl.tracks.push({ ...track });
+  savePlaylists();
+}
+
+// Event Listeners for new UI (Moved to DOMContentLoaded)
+
+
+window.openAddTrackToPlaylistModal = openAddTrackToPlaylistModal;
+
+// -------------------------------------------------------------
+// Last Listening (Fix)
+// -------------------------------------------------------------
+
+function renderLastListening() {
+  const grid = document.getElementById('last-listening-grid');
+  if (!grid) return;
+  
+  if (playHistory.length === 0) {
+    grid.innerHTML = '<p style="grid-column: 1/-1; padding: 60px; text-align: center; color: var(--on-surface-muted);">No play history yet.</p>';
+    return;
+  }
+  
+  grid.innerHTML = '';
+  // Show most recent first
+  const latest = [...playHistory].reverse();
+  
+  latest.forEach((track) => {
+    const card = document.createElement('div');
+    card.className = 'album-card';
+    card.innerHTML = `
+      <div class="album-art" style="background-image:url('${track.img}');background-size:cover;background-position:center;">
+        <div class="play-overlay"><span class="material-symbols-rounded">play_arrow</span></div>
+      </div>
+      <p class="album-name">${track.title}</p>
+      <p class="artist-name">${track.artist}</p>
+    `;
+    card.addEventListener('click', () => {
+      const idx = playlist.findIndex(p => p.id === track.id);
+      if (idx !== -1) {
+        currentTrackIndex = idx;
+        loadTrack(idx);
+        if (!isPlaying) togglePlay();
+      }
+    });
+    grid.appendChild(card);
+  });
+}
+
+// -------------------------------------------------------------
+// Multi-Playlist Logic (Step 2)
+// -------------------------------------------------------------
+
+let selectorMode = 'playlist'; // 'playlist' or 'room'
+
+function openGlobalTrackSelector(mode = 'playlist') {
+  selectorMode = mode;
+  modalGlobalTrackSelector.classList.add('active');
+  inputSelectorSearch.value = '';
+  renderGlobalTrackSelector();
+}
+
+function renderGlobalTrackSelector(query = '') {
+  selectorTrackList.innerHTML = '';
+  let existingIds = new Set();
+  
+  if (selectorMode === 'playlist') {
+    const currentPL = userPlaylists.find(p => p.id === currentPlaylistId);
+    existingIds = new Set(currentPL ? currentPL.tracks.map(t => t.id) : []);
+  } else if (selectorMode === 'room') {
+    existingIds = new Set(roomQueue.map(t => t.track_id));
+  }
+  
+  const filtered = playlist.filter(t => {
+     if (!query) return true;
+     const q = query.toLowerCase();
+     return t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q);
+  });
+  
+  if (filtered.length === 0) {
+    selectorTrackList.innerHTML = '<p style="padding:40px;text-align:center;color:var(--on-surface-muted);">No tracks found.</p>';
+    return;
+  }
+  
+  filtered.forEach(track => {
+    const isAdded = existingIds.has(track.id);
+    const row = document.createElement('div');
+    row.className = 'selector-track-row';
+    row.innerHTML = `
+      <div class="selector-track-art" style="background-image:url('${track.img}')"></div>
+      <div class="selector-track-info">
+        <span class="selector-track-title">${track.title}</span>
+        <span class="selector-track-artist">${track.artist}</span>
+      </div>
+      <button class="btn-add-selector ${isAdded ? 'added' : ''}">${isAdded ? 'ADDED' : 'ADD'}</button>
+    `;
+    if (!isAdded) {
+      row.querySelector('.btn-add-selector').onclick = () => {
+        if (selectorMode === 'playlist') {
+          addTrackToPlaylist(currentPlaylistId, track);
+          showPlaylistDetail(currentPlaylistId);
+        } else {
+          addTrackToRoomQueue(track);
+        }
+        renderGlobalTrackSelector(inputSelectorSearch.value);
+      };
+    }
+    selectorTrackList.appendChild(row);
+  });
+}
+
+// -------------------------------------------------------------
+// Sonic Radio Logic
+// -------------------------------------------------------------
+
+const radioContent = {
+  stations: [
+    { id: 'rad_1', title: 'Lo-Fi Beats 24/7', artist: 'Chill Station', img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' },
+    { id: 'rad_2', title: 'Modern Jazz Hour', artist: 'Smooth Station', img: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' },
+    { id: 'rad_3', title: 'Synthwave Drift', artist: 'Neon Station', img: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' }
+  ],
+  podcasts: [
+    { id: 'pod_1', title: 'Deep Tech Daily', artist: 'The Tech Crew', img: './brain/bba90702-76d9-4e1e-8270-db4f918a9a04/podcast_tech_cover_1775752966816.png', badge: 'NEW EPISODE' },
+    { id: 'pod_2', title: 'Acoustic Journeys', artist: 'Travel Pod', img: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=500&auto=format&fit=crop', badge: 'PODCAST' }
+  ],
+  stories: [
+    { id: 'stor_1', title: 'Midnight Mysteries', artist: 'Narrator X', img: './brain/bba90702-76d9-4e1e-8270-db4f918a9a04/story_mystery_cover_1775752990565.png', badge: 'STORY' },
+    { id: 'stor_2', title: 'Urban Legends', artist: 'Myth Archive', img: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=500&auto=format&fit=crop', badge: 'STORY' }
+  ]
+};
+
+function renderRadioView() {
+  const stationsGrid = document.getElementById('radio-stations-grid');
+  const podcastsGrid = document.getElementById('radio-podcasts-grid');
+  const storiesGrid = document.getElementById('radio-stories-grid');
+  
+  if (stationsGrid) renderRadioGrid(stationsGrid, radioContent.stations);
+  if (podcastsGrid) renderRadioGrid(podcastsGrid, radioContent.podcasts);
+  if (storiesGrid) renderRadioGrid(storiesGrid, radioContent.stories);
+}
+
+function renderRadioGrid(container, items) {
+  container.innerHTML = '';
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'album-card';
+    card.innerHTML = `
+      <div class="album-art" style="background-image:url('${item.img}');background-size:cover;background-position:center;">
+        <div class="radio-card-badge">${item.badge}</div>
+        <div class="play-overlay"><span class="material-symbols-rounded">play_arrow</span></div>
+      </div>
+      <p class="album-name">${item.title}</p>
+      <p class="artist-name">${item.artist}</p>
+    `;
+    card.addEventListener('click', () => {
+       // Logic to play a random or specific track for that station
+       const randomIdx = Math.floor(Math.random() * playlist.length);
+       currentTrackIndex = randomIdx;
+       loadTrack(randomIdx);
+       if (!isPlaying) togglePlay();
+    });
+    container.appendChild(card);
+  });
+}
+
+
