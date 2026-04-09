@@ -1538,6 +1538,7 @@ async function hostPlayNext() {
 document.addEventListener('DOMContentLoaded', () => {
   fetchPlaylist();
   setupEventListeners();
+  renderRadioView(); // Pre-render radio so it's always populated
 
   // ── Top Nav Routing ──
   const topNavMap = {
