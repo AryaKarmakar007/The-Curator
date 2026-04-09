@@ -61,6 +61,8 @@ let syncInterval = null;
 let isPlaying = false;
 let currentTrackIndex = 0;
 let volume = 0.7;
+let isShuffleOn = false;
+let repeatMode = 0; // 0 = off, 1 = repeat all, 2 = repeat one
 
 // Liked Songs State (persisted in localStorage)
 let likedSongs = JSON.parse(localStorage.getItem('likedSongs') || '[]');
@@ -266,6 +268,17 @@ function handleNext() {
     const nextTrack = userQueue.shift();
     const idx = playlist.findIndex(p => p.id === nextTrack.id);
     if(idx !== -1) currentTrackIndex = idx;
+  } else if (isShuffleOn) {
+    // Pick a random track that isn't the current one
+    let randomIdx;
+    if (playlist.length > 1) {
+      do {
+        randomIdx = Math.floor(Math.random() * playlist.length);
+      } while (randomIdx === currentTrackIndex);
+    } else {
+      randomIdx = 0;
+    }
+    currentTrackIndex = randomIdx;
   } else {
     let loopCount = 0;
     do {
@@ -280,6 +293,56 @@ function handleNext() {
   
   loadTrack(currentTrackIndex);
   if (!isPlaying) togglePlay();
+}
+
+function handleTrackEnded() {
+  if (repeatMode === 2) {
+    // Repeat One: replay the same track
+    audioPlayer.currentTime = 0;
+    audioPlayer.play().catch(console.error);
+    return;
+  }
+  // Repeat All or Off: go to next
+  // If repeat is off and we're at the last track, stop
+  if (repeatMode === 0 && userQueue.length === 0 && currentTrackIndex >= playlist.length - 1 && !isShuffleOn) {
+    isPlaying = false;
+    updatePlayPauseUI();
+    return;
+  }
+  handleNext();
+}
+
+function toggleShuffle() {
+  isShuffleOn = !isShuffleOn;
+  const btn = document.getElementById('shuffle-btn');
+  if (btn) {
+    btn.classList.toggle('active-control', isShuffleOn);
+    btn.querySelector('.material-symbols-rounded').style.color = isShuffleOn ? 'var(--primary)' : '';
+  }
+}
+
+function toggleRepeat() {
+  repeatMode = (repeatMode + 1) % 3; // cycle: 0 → 1 → 2 → 0
+  const btn = document.getElementById('repeat-btn');
+  if (!btn) return;
+  const icon = btn.querySelector('.material-symbols-rounded');
+  
+  if (repeatMode === 0) {
+    // Off
+    icon.textContent = 'repeat';
+    icon.style.color = '';
+    btn.classList.remove('active-control');
+  } else if (repeatMode === 1) {
+    // Repeat All
+    icon.textContent = 'repeat';
+    icon.style.color = 'var(--primary)';
+    btn.classList.add('active-control');
+  } else {
+    // Repeat One
+    icon.textContent = 'repeat_one';
+    icon.style.color = 'var(--primary)';
+    btn.classList.add('active-control');
+  }
 }
 
 function handlePrev() {
@@ -315,7 +378,13 @@ function setupEventListeners() {
     totalTimeEl.textContent = formatTime(audioPlayer.duration);
   });
 
-  audioPlayer.addEventListener('ended', handleNext);
+  audioPlayer.addEventListener('ended', handleTrackEnded);
+
+  // Shuffle & Repeat buttons
+  const shuffleBtn = document.getElementById('shuffle-btn');
+  const repeatBtn = document.getElementById('repeat-btn');
+  if (shuffleBtn) shuffleBtn.addEventListener('click', toggleShuffle);
+  if (repeatBtn) repeatBtn.addEventListener('click', toggleRepeat);
 
   progressBarContainer.addEventListener('click', (e) => {
     if(!audioPlayer.duration || currentRoomId) return; // disable seeking in room MVP
@@ -841,6 +910,13 @@ function switchView(viewId) {
   } else {
     btnCreateRoom.style.display = 'none';
   }
+
+  // Auto-render content for views that need it
+  if (viewId === 'radio-view') renderRadioView();
+  if (viewId === 'last-listening-view') renderLastListening();
+  if (viewId === 'liked-songs-view') renderLikedSongs();
+  if (viewId === 'recommended-view') renderRecommendations();
+  if (viewId === 'playlist-view') showPlaylists();
 }
 
 function showRoomView() {
@@ -1693,6 +1769,163 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // ── Global Search Logic ──
+  const globalSearchInput = document.getElementById('global-search-input');
+  const searchDropdown = document.getElementById('search-results-dropdown');
+  const searchClearBtn = document.getElementById('search-clear-btn');
+  let searchDebounceTimer = null;
+
+  function highlightMatch(text, query) {
+    if (!query) return text;
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
+  }
+
+  function performSearch(query) {
+    const q = (query || '').toLowerCase().trim();
+
+    // Show/hide clear button
+    if (q.length > 0) {
+      searchClearBtn.style.display = 'flex';
+    } else {
+      searchClearBtn.style.display = 'none';
+    }
+
+    // Find matching tracks (all if query is empty)
+    const matchedTracks = q.length === 0
+      ? [...playlist]
+      : playlist.filter(t =>
+          t.title.toLowerCase().includes(q) ||
+          t.artist.toLowerCase().includes(q) ||
+          (t.album && t.album.toLowerCase().includes(q))
+        );
+
+    // Find unique artists (all if query is empty)
+    const artistSet = new Map();
+    playlist.forEach(t => {
+      if (q.length === 0 || t.artist.toLowerCase().includes(q)) {
+        const key = t.artist.toLowerCase().trim();
+        if (!artistSet.has(key)) {
+          artistSet.set(key, { name: t.artist, img: t.img, count: 1 });
+        } else {
+          artistSet.get(key).count++;
+        }
+      }
+    });
+    const matchedArtists = Array.from(artistSet.values());
+
+    // Build dropdown HTML
+    searchDropdown.innerHTML = '';
+
+    if (matchedTracks.length === 0 && matchedArtists.length === 0) {
+      searchDropdown.innerHTML = `
+        <div class="search-no-results">
+          <span class="material-symbols-rounded">search_off</span>
+          No results for "${query}"
+        </div>
+      `;
+      searchDropdown.classList.add('active');
+      return;
+    }
+
+    // Artists section
+    if (matchedArtists.length > 0) {
+      const label = document.createElement('div');
+      label.className = 'search-section-label';
+      label.textContent = `Artists (${matchedArtists.length})`;
+      searchDropdown.appendChild(label);
+
+      matchedArtists.forEach(artist => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `
+          <div class="search-result-art artist-art" style="background-image:url('${artist.img}')"></div>
+          <div class="search-result-info">
+            <div class="search-result-title">${highlightMatch(artist.name, query)}</div>
+            <div class="search-result-sub">${artist.count} song${artist.count > 1 ? 's' : ''}</div>
+          </div>
+          <span class="search-result-type">Artist</span>
+        `;
+        item.addEventListener('click', () => {
+          closeSearch();
+          showArtistView(artist.name);
+        });
+        searchDropdown.appendChild(item);
+      });
+    }
+
+    // Tracks section
+    if (matchedTracks.length > 0) {
+      const label = document.createElement('div');
+      label.className = 'search-section-label';
+      label.textContent = `Songs (${matchedTracks.length})`;
+      searchDropdown.appendChild(label);
+
+      matchedTracks.forEach(track => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `
+          <div class="search-result-art" style="background-image:url('${track.img}')"></div>
+          <div class="search-result-info">
+            <div class="search-result-title">${highlightMatch(track.title, query)}</div>
+            <div class="search-result-sub">${highlightMatch(track.artist, query)}${track.album && track.album !== 'Unknown' ? ' • ' + track.album : ''}</div>
+          </div>
+          <span class="search-result-type">Song</span>
+        `;
+        item.addEventListener('click', () => {
+          closeSearch();
+          const idx = playlist.findIndex(p => p.id === track.id);
+          if (idx !== -1) {
+            if (currentRoomId) leaveRoom('home-view');
+            currentTrackIndex = idx;
+            loadTrack(idx);
+            if (!isPlaying) togglePlay();
+          }
+        });
+        searchDropdown.appendChild(item);
+      });
+    }
+
+    searchDropdown.classList.add('active');
+  }
+
+  function closeSearch() {
+    searchDropdown.classList.remove('active');
+    globalSearchInput.value = '';
+    searchClearBtn.style.display = 'none';
+    globalSearchInput.blur();
+  }
+
+  if (globalSearchInput) {
+    // Show all results on focus (click into search bar)
+    globalSearchInput.addEventListener('focus', () => {
+      performSearch(globalSearchInput.value);
+    });
+
+    globalSearchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        performSearch(globalSearchInput.value);
+      }, 150);
+    });
+
+    globalSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSearch();
+    });
+  }
+
+  if (searchClearBtn) {
+    searchClearBtn.addEventListener('click', closeSearch);
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.search-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+      searchDropdown.classList.remove('active');
+    }
+  });
 });
 // -------------------------------------------------------------
 // Multi-Playlist Logic
@@ -1964,22 +2197,30 @@ function renderGlobalTrackSelector(query = '') {
 }
 
 // -------------------------------------------------------------
-// Sonic Radio Logic
+// Auralis Radio Logic
 // -------------------------------------------------------------
 
 const radioContent = {
   stations: [
     { id: 'rad_1', title: 'Lo-Fi Beats 24/7', artist: 'Chill Station', img: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' },
     { id: 'rad_2', title: 'Modern Jazz Hour', artist: 'Smooth Station', img: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' },
-    { id: 'rad_3', title: 'Synthwave Drift', artist: 'Neon Station', img: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' }
+    { id: 'rad_3', title: 'Synthwave Drift', artist: 'Neon Station', img: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' },
+    { id: 'rad_4', title: 'Acoustic Sunrise', artist: 'Morning Vibes', img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' },
+    { id: 'rad_5', title: 'Deep House Mix', artist: 'Club Auralis', img: 'https://images.unsplash.com/photo-1571266028865-6a1ad4e2e48d?q=80&w=500&auto=format&fit=crop', badge: 'LIVE' }
   ],
   podcasts: [
-    { id: 'pod_1', title: 'Deep Tech Daily', artist: 'The Tech Crew', img: './brain/bba90702-76d9-4e1e-8270-db4f918a9a04/podcast_tech_cover_1775752966816.png', badge: 'NEW EPISODE' },
-    { id: 'pod_2', title: 'Acoustic Journeys', artist: 'Travel Pod', img: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=500&auto=format&fit=crop', badge: 'PODCAST' }
+    { id: 'pod_1', title: 'Deep Tech Daily', artist: 'The Tech Crew', img: 'https://images.unsplash.com/photo-1589903308904-1010c2294adc?q=80&w=500&auto=format&fit=crop', badge: 'NEW EPISODE' },
+    { id: 'pod_2', title: 'Acoustic Journeys', artist: 'Travel Pod', img: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=500&auto=format&fit=crop', badge: 'PODCAST' },
+    { id: 'pod_3', title: 'Music & Mind', artist: 'Dr. Soundwave', img: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=500&auto=format&fit=crop', badge: 'TRENDING' },
+    { id: 'pod_4', title: 'Behind The Lyrics', artist: 'Song Stories', img: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=500&auto=format&fit=crop', badge: 'NEW EPISODE' },
+    { id: 'pod_5', title: 'Producer Diaries', artist: 'Beat Lab', img: 'https://images.unsplash.com/photo-1598653222000-6b7b7a552625?q=80&w=500&auto=format&fit=crop', badge: 'PODCAST' }
   ],
   stories: [
-    { id: 'stor_1', title: 'Midnight Mysteries', artist: 'Narrator X', img: './brain/bba90702-76d9-4e1e-8270-db4f918a9a04/story_mystery_cover_1775752990565.png', badge: 'STORY' },
-    { id: 'stor_2', title: 'Urban Legends', artist: 'Myth Archive', img: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=500&auto=format&fit=crop', badge: 'STORY' }
+    { id: 'stor_1', title: 'Midnight Mysteries', artist: 'Narrator X', img: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=500&auto=format&fit=crop', badge: 'STORY' },
+    { id: 'stor_2', title: 'Urban Legends', artist: 'Myth Archive', img: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=500&auto=format&fit=crop', badge: 'STORY' },
+    { id: 'stor_3', title: 'Tales After Dark', artist: 'Luna Reads', img: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?q=80&w=500&auto=format&fit=crop', badge: 'NEW' },
+    { id: 'stor_4', title: 'Sound of History', artist: 'Chronicle FM', img: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=500&auto=format&fit=crop', badge: 'STORY' },
+    { id: 'stor_5', title: 'Dream Drifters', artist: 'Sleep Cast', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop', badge: 'RELAXING' }
   ]
 };
 

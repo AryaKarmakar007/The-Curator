@@ -340,6 +340,11 @@ input {
   gap: 16px;
 }
 
+/* Search wrapper for dropdown positioning */
+.search-wrapper {
+  position: relative;
+}
+
 .search-bar {
   display: flex;
   align-items: center;
@@ -349,11 +354,12 @@ input {
   padding: 8px 16px;
   border-radius: 20px;
   width: 200px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, width 0.3s ease;
 }
 
 .search-bar:focus-within {
   border-color: var(--border-hover);
+  width: 300px;
 }
 
 .search-bar .material-symbols-rounded {
@@ -369,6 +375,138 @@ input {
 
 .search-bar input::placeholder {
   color: var(--on-surface-muted);
+}
+
+.search-clear-btn {
+  color: var(--on-surface-muted);
+  padding: 2px;
+  border-radius: 50%;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.search-clear-btn:hover {
+  color: var(--primary);
+}
+
+/* Search Results Dropdown */
+.search-results-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  min-width: 300px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: rgba(14, 22, 40, 0.97);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 212, 255, 0.06);
+  z-index: 200;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-elevated) transparent;
+}
+
+.search-results-dropdown.active {
+  display: block;
+}
+
+.search-results-dropdown::-webkit-scrollbar { width: 4px; }
+.search-results-dropdown::-webkit-scrollbar-thumb {
+  background: var(--surface-elevated);
+  border-radius: 3px;
+}
+
+.search-section-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--on-surface-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 14px 16px 6px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.search-result-item:hover {
+  background: var(--primary-subtle);
+}
+
+.search-result-art {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface-elevated);
+}
+
+.search-result-art.artist-art {
+  border-radius: 50%;
+}
+
+.search-result-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.search-result-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-sub {
+  font-size: 11px;
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-type {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--primary);
+  background: var(--primary-subtle);
+  padding: 3px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.search-no-results {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--on-surface-muted);
+  font-size: 13px;
+}
+
+.search-no-results .material-symbols-rounded {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 8px;
+  color: var(--on-surface-dim);
+}
+
+.search-result-item mark {
+  background: transparent;
+  color: var(--primary);
+  font-weight: 700;
 }
 
 .icon-btn {
@@ -859,6 +997,24 @@ input {
 
 .icon-btn-small .material-symbols-rounded { font-size: 18px; }
 .icon-btn-medium .material-symbols-rounded { font-size: 22px; }
+
+/* Active state for Shuffle & Repeat buttons */
+.icon-btn-small.active-control {
+  position: relative;
+}
+
+.icon-btn-small.active-control::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary-glow);
+}
 
 .progress-container {
   width: 100%;
@@ -2734,6 +2890,21 @@ input {
   pointer-events: none; /* Crucial: ensures the click hits the button, not the icon */
 }
 
-
-
-
+/* ══════════════════════════════════════
+   RADIO CARD BADGES
+══════════════════════════════════════ */
+.radio-card-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0, 212, 255, 0.9);
+  color: #020b18;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
+}

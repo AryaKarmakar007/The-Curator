@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Curator - Sonic Lens</title>
+  <title>Auralis</title>
   <link rel="stylesheet" href="./index.css?v=8" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
@@ -20,7 +20,7 @@
 
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
-      <div class="brand">The Curator</div>
+      <div class="brand">Auralis</div>
 
       <nav class="nav-menu">
 
@@ -78,9 +78,17 @@
         </nav>
 
         <div class="topbar-right">
-          <div class="search-bar">
-            <span class="material-symbols-rounded">search</span>
-            <input type="text" placeholder="Search..." />
+          <div class="search-wrapper">
+            <div class="search-bar">
+              <span class="material-symbols-rounded">search</span>
+              <input type="text" id="global-search-input" placeholder="Search songs, artists..." />
+              <button class="search-clear-btn" id="search-clear-btn" style="display:none;">
+                <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+              </button>
+            </div>
+            <div class="search-results-dropdown" id="search-results-dropdown">
+              <!-- Populated by JS -->
+            </div>
           </div>
           
           <button class="icon-btn"><span class="material-symbols-rounded">settings</span></button>
@@ -397,7 +405,7 @@
       </div>      <!-- Radio View -->
       <div class="view-container" id="radio-view" style="display: none;">
         <div class="room-header">
-          <h1 class="hero-title">Sonic Radio</h1>
+          <h1 class="hero-title">Auralis Radio</h1>
           <p class="section-subtitle">Live stations, podcasts, and curated stories.</p>
         </div>
 
